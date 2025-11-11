@@ -157,9 +157,9 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-white dark:bg-[#111b21] border-r border-gray-300 dark:border-[#2a2f32]">
+    <div className="w-full h-full flex flex-col bg-[#111b21] border-r border-[#2a2f32]">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 bg-[#f0f2f5] dark:bg-[#202c33] border-b border-gray-300 dark:border-[#2a2f32] h-[72px]">
+      <div className="flex items-center justify-between px-5 py-3 bg-[#202c33] border-b border-[#2a2f32] h-[72px]">
         <div className="w-11 h-11 rounded-full overflow-hidden cursor-pointer">
           <img
             src="https://imgs.search.brave.com/yyohYnmzAAnkfFJW05xsD3s5CgX2w39fc_AGW-kFWFo/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly90My5m/dGNkbi5uZXQvanBn/LzEyLzgxLzEyLzE2/LzM2MF9GXzEyODEx/MjE2NjNfSmV4eXJI/ckFCZUhjOEl0Q3lG/Qk1DR2hqZVBRekxV/QlYuanBn"
@@ -198,7 +198,7 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
       </div>
 
       {/* Search */}
-      <div className="p-3 pb-0 bg-white dark:bg-[#111b21]">
+      <div className="p-3 pb-0 bg-[#111b21]">
         <div className="relative">
           <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
             <Search size={16} className="text-gray-500 dark:text-gray-400" />
@@ -208,21 +208,21 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
             onChange={(e) => setQuery(e.target.value)}
             type="text"
             placeholder="Search or start new chat"
-            className="w-full py-2.5 pl-12 pr-4 rounded-xl text-[15px] bg-[#f0f2f5] dark:bg-[#202c33] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 border border-transparent focus:outline-none focus:border-[#00a884] focus:ring-1 focus:ring-[#00a884] dark:focus:border-[#00a884]"
+            className="w-full py-2.5 pl-12 pr-4 rounded-xl text-[15px] bg-[#202c33] text-white placeholder-gray-400 border border-transparent focus:outline-none focus:border-[#00a884] focus:ring-1 focus:ring-[#00a884]"
           />
         </div>
       </div>
 
       {/* Chat list */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-[#2a3942] scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#2a3942] scrollbar-track-transparent">
         {loading ? (
-          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+          <div className="p-4 text-center text-gray-400">
             Loading contacts...
           </div>
         ) : error ? (
           <div className="p-4 text-center text-red-400">{error}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+          <div className="p-4 text-center text-gray-400">
             No chats found
           </div>
         ) : (
@@ -242,8 +242,8 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
                   onClick={() => onSelect(c.id)}
                   className={`flex items-center px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-150 ${
                     active
-                      ? "bg-[#f5f6f6] dark:bg-[#2a3942] shadow-sm"
-                      : "hover:bg-[#f5f6f6] dark:hover:bg-[#2a3942]"
+                      ? "bg-[#2a3942] shadow-sm"
+                      : "hover:bg-[#2a3942]"
                   }`}
                 >
                   {/* Avatar */}
@@ -258,14 +258,14 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
                   {/* Chat info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-0.5">
-                      <h3 className="text-[15px] font-medium text-gray-900 dark:text-white truncate">
+                      <h3 className="text-[15px] font-medium text-white truncate">
                         {c.name || "Unknown"}
                       </h3>
                       <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {formatTime(c.lastMessageTime)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate leading-5">
+                    <p className="text-sm text-gray-400 truncate leading-5">
                       {c.lastMessage}
                     </p>
                   </div>
