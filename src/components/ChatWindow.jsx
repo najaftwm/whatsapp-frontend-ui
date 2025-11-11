@@ -387,7 +387,7 @@ export default function ChatWindow({
 
       {/* Messages container */}
       <div
-        className="flex-1 overflow-y-auto px-[60px] py-0 relative scrollbar-thin scrollbar-thumb-gray-400/40 dark:scrollbar-thumb-[#2a3942] scrollbar-track-transparent"
+        className="flex-1 overflow-y-auto px-4 md:px-[60px] py-0 relative scrollbar-thin scrollbar-thumb-gray-400/40 dark:scrollbar-thumb-[#2a3942] scrollbar-track-transparent"
         style={wallpaperStyle}
       >
         <div className="min-h-full flex flex-col justify-end py-[12px] text-white">
@@ -404,8 +404,8 @@ export default function ChatWindow({
                 <div
                   className={`relative px-[9px] py-[6px] rounded-[7.5px] max-w-[65%] shadow-sm ${
                     isCompany
-                      ? "bg-[#005c4b] text-white ml-[60px]"
-                      : "bg-[#202c33] text-white mr-[60px]"
+                      ? "bg-[#005c4b] text-white ml-10 md:ml-[60px]"
+                      : "bg-[#202c33] text-white mr-10 md:mr-[60px]"
                   }`}
                   style={{
                     borderRadius: isCompany
