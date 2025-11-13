@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { MinusCircle } from 'lucide-react'
 import useContacts from './hooks/useContacts'
-import useAgents from './hooks/useAgents'
 import AssignAgentDropdown from './AssignAgentDropdown'
 
 function formatTimeLabel(raw) {
@@ -52,7 +51,6 @@ function formatTimeLabel(raw) {
 
 export default function ContactsSection() {
   const { contacts, loading, error, refresh } = useContacts()
-  const { agents } = useAgents()
   const [openContactId, setOpenContactId] = useState(null)
   const [deletingContactId, setDeletingContactId] = useState(null)
   const buttonRefs = useRef({})
@@ -122,7 +120,7 @@ export default function ContactsSection() {
     setDeletingContactId(contact.id)
     try {
       const res = await fetch(
-        `https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKEND/api/deleteAssignments?customer_id=${encodeURIComponent(customerId)}`,
+        `https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/deleteAssignment.php?customer_id=${encodeURIComponent(customerId)}`,
         {
           method: 'GET',
           credentials: 'include',
