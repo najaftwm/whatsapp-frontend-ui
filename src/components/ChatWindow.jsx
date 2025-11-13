@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Send,
   Mic,
@@ -33,7 +33,7 @@ export default function ChatWindow({
       }
       try {
         const res = await fetch(
-          `https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/getMessages.php?contact_id=${activeChat}`,
+          `https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/getMessages.php?contact_id=${activeChat}`,
           { credentials: "include" ,
           headers: { "Content-Type": "application/json", "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" },
         });
@@ -144,7 +144,7 @@ export default function ChatWindow({
 
     try {
       await fetch(
-        "https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/sendMessage.php",
+        "https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/sendMessage.php",
         {
           method: "POST",
           credentials: "include",
@@ -179,7 +179,7 @@ export default function ChatWindow({
   };
 
 
-  const parseDate = (raw) => {
+  const parseDate = useCallback((raw) => {
     if (!raw) return null;
 
     const tryDate = (value) => {
@@ -221,9 +221,9 @@ export default function ChatWindow({
     }
 
     return date;
-  };
+  }, []);
 
-  const formatTime = (raw) => {
+  const formatTime = useCallback((raw) => {
     const date = parseDate(raw);
     if (!date) return "";
 
@@ -236,7 +236,7 @@ export default function ChatWindow({
     } catch {
       return "";
     }
-  };
+  }, [parseDate]);
 
   const contactName = useMemo(() => {
     if (contact?.name) return contact.name;
@@ -277,7 +277,7 @@ export default function ChatWindow({
     }
 
     return `Last message ${dateFormatter.format(date)} ${timeLabel}`;
-  }, [contact]);
+  }, [contact, formatTime, parseDate]);
 
   const showBackButton = typeof onBack === "function";
 
@@ -359,13 +359,19 @@ export default function ChatWindow({
         </div>
 
         <div className="flex items-center gap-5">
-          <button className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer">
+          <button 
+            className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer"
+            onMouseEnter={handleIconEnter}
+            onMouseLeave={handleIconLeave}
+          >
             <Search size={20} />
           </button>
           <div className="relative" ref={menuRef}>
             <button
               className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer"
               onClick={() => setMenuOpen((prev) => !prev)}
+              onMouseEnter={handleIconEnter}
+              onMouseLeave={handleIconLeave}
             >
               <MoreVertical size={20} />
             </button>
@@ -435,10 +441,18 @@ export default function ChatWindow({
       {/* Message input area */}
       <div className="px-4 py-[10px] bg-[#202c33]">
         <div className="flex items-center gap-[10px]">
-          <button className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer">
+          <button 
+            className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer"
+            onMouseEnter={handleIconEnter}
+            onMouseLeave={handleIconLeave}
+          >
             <Smile size={24} />
           </button>
-          <button className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer">
+          <button 
+            className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer"
+            onMouseEnter={handleIconEnter}
+            onMouseLeave={handleIconLeave}
+          >
             <Paperclip size={24} />
           </button>
           <div className="flex-1 bg-[#2a3942] rounded-[21px] min-h-[42px] flex items-center px-3">
@@ -455,11 +469,17 @@ export default function ChatWindow({
             <button
               onClick={handleSend}
               className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer"
+              onMouseEnter={handleIconEnter}
+              onMouseLeave={handleIconLeave}
             >
               <Send size={24} />
             </button>
           ) : (
-            <button className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer">
+            <button 
+              className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer"
+              onMouseEnter={handleIconEnter}
+              onMouseLeave={handleIconLeave}
+            >
               <Mic size={24} />
             </button>
           )}

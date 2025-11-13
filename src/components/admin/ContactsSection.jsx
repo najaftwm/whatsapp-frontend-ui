@@ -66,7 +66,7 @@ export default function ContactsSection() {
     console.log('Assigning agent:', { customer_id: contactId, agent_id: agentId })
     
     try {
-      const res = await fetch('https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/assignAgent.php', {
+      const res = await fetch('https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/assignAgent.php', {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -109,7 +109,7 @@ export default function ContactsSection() {
     setDeletingContactId(contact.id)
     try {
       const res = await fetch(
-        'https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/deleteContact.php',
+        'https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/deleteContact.php',
         {
           method: 'POST',
           credentials: 'include',

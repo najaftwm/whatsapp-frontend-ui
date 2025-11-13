@@ -75,7 +75,7 @@ export default function App() {
             const user = await authClient.getCurrentUser()
             type = user?.type || user?.user_type || user?.userType
             console.log('User type from getCurrentUser:', type)
-          } catch (e) {
+          } catch {
             console.log('getCurrentUser endpoint not available, trying alternative method')
           }
         }
@@ -87,7 +87,7 @@ export default function App() {
         if (!type) {
           try {
             const resp = await fetch(
-              "https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/getContacts.php",
+              "https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/getContacts.php",
               {
                 method: "GET",
                 credentials: "include",
@@ -130,7 +130,7 @@ export default function App() {
       console.log('App.jsx - Fetching contacts for agent...');
       try {
         const resp = await fetch(
-          "https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/getContacts.php",
+          "https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/getContacts.php",
           {
             method: "GET",
             credentials: "include", // This sends the session cookie
@@ -243,7 +243,7 @@ export default function App() {
               </h1>
               <div className="flex items-center gap-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-500">
-                  T N S <span className="text-xs tracking-[0.18em] text-emerald-500">Admin</span>
+                  TNS <span className="text-xs tracking-[0.18em] text-emerald-500">Admin</span>
                 </p>
                 <button
                   onClick={handleLogout}

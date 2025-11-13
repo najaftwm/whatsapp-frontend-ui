@@ -98,7 +98,7 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
       console.log('ChatList - Fetching contacts (this should only show assigned contacts for agents)...');
       try {
         const resp = await fetch(
-          "https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/getContacts.php",
+          "https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/getContacts.php",
           {
             method: "GET",
             credentials: "include", // This sends the session cookie

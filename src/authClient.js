@@ -5,7 +5,7 @@ const AUTH_FLAG_KEY = 'isAuthenticated';
 const USER_DATA_KEY = 'authUser';
 
 // Adjust this if your backend runs at a different origin/path
-const BASE_URL = 'https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api';
+const BASE_URL = 'https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api';
 
 export const authClient = {
   isAuthenticated() {
