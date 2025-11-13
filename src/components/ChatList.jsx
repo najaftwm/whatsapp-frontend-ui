@@ -95,23 +95,33 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
     async function fetchContacts() {
       setLoading(true);
       setError("");
+      console.log('ChatList - Fetching contacts (this should only show assigned contacts for agents)...');
       try {
         const resp = await fetch(
-          "https://wapi.twmresearchalert.com/backendphp/api/getContacts.php",
+          "https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/getContacts.php",
           {
             method: "GET",
-            credentials: "include",
+            credentials: "include", // This sends the session cookie
             headers: { "Content-Type": "application/json", "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" },
           }
         );
         const data = await resp.json().catch(() => ({}));
+        console.log('ChatList - getContacts response:', {
+          status: resp.status,
+          ok: data?.ok,
+          contactCount: data?.contacts?.length || 0,
+          allContacts: data?.contacts?.map(c => ({ id: c.id, name: c.name, agent_id: c.agent_id, agent_name: c.agent_name })),
+        });
+        
         if (!resp.ok || data?.ok !== true) {
           throw new Error(data?.error || "Failed to load contacts");
         }
         if (aborted) return;
         const mapped = normalizeContacts(data.contacts);
+        console.log('ChatList - Normalized contacts:', mapped.length, 'contacts');
         setContacts(mapped);
       } catch (e) {
+        console.error('ChatList - Error fetching contacts:', e);
         if (!aborted) setError(e?.message || "Failed to load contacts");
       } finally {
         if (!aborted) setLoading(false);

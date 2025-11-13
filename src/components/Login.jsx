@@ -16,6 +16,7 @@ export default function Login({ onLoginSuccess }) {
 
     try {
       const user = await authClient.login(username, password);
+      console.log('Login successful, user object:', user);
       if (onLoginSuccess) onLoginSuccess(user);
     } catch (err) {
       console.error("Login error:", err);

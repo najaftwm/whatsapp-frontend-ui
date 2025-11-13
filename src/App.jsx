@@ -4,6 +4,11 @@ import ChatList from './components/ChatList'
 import ChatWindow from './components/ChatWindow'
 import Login from './components/Login'
 import { authClient } from './authClient'
+// Import Admin Panel components
+import AdminSidebar from './components/admin/Sidebar'
+import AdminChatSection from './components/admin/ChatSection'
+import AdminContactsSection from './components/admin/ContactsSection'
+import AdminCRMSettingsSection from './components/admin/CRMSettingsSection'
 
 const LoaderScreen = () => (
   <div className="flex h-screen items-center justify-center bg-[#0b141a] text-center">
@@ -44,21 +49,103 @@ export default function App() {
   const [isAuthed, setIsAuthed] = useState(authClient.isAuthenticated())
   const [contacts, setContacts] = useState([])
   const [showLoader, setShowLoader] = useState(isAuthed)
+  const [userType, setUserType] = useState(null) // 'admin' or 'agent'
+  const [loadingUserType, setLoadingUserType] = useState(true)
+  const [adminActiveSection, setAdminActiveSection] = useState('chat') // For admin panel navigation
 
-  // Fetch contacts when authenticated
+  // Fetch user type after authentication
   useEffect(() => {
-    if (!isAuthed) return;
+    if (!isAuthed) {
+      setUserType(null)
+      setLoadingUserType(false)
+      return
+    }
+
+    async function fetchUserType() {
+      setLoadingUserType(true)
+      try {
+        // Method 1: Try to get user type from stored user (from login response)
+        const storedUser = authClient.getUser()
+        console.log('Stored user from localStorage:', storedUser)
+        let type = storedUser?.type || storedUser?.user_type || storedUser?.userType
+        
+        // Method 2: If not found, try to fetch from backend getCurrentUser endpoint
+        if (!type) {
+          try {
+            const user = await authClient.getCurrentUser()
+            type = user?.type || user?.user_type || user?.userType
+            console.log('User type from getCurrentUser:', type)
+          } catch (e) {
+            console.log('getCurrentUser endpoint not available, trying alternative method')
+          }
+        }
+        
+        // Method 3: Infer from getContacts response
+        // Backend returns different data for admin vs agent
+        // Admin: all contacts, Agent: only assigned contacts
+        // We can check if we get contacts that might indicate admin
+        if (!type) {
+          try {
+            const resp = await fetch(
+              "https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/getContacts.php",
+              {
+                method: "GET",
+                credentials: "include",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" },
+              }
+            )
+            const data = await resp.json()
+            console.log('getContacts response for user type detection:', data)
+            
+            // This is a fallback - not ideal but works if backend doesn't return user type
+            // Default to 'agent' - the backend will filter contacts correctly anyway
+            type = 'agent'
+          } catch (e) {
+            console.error('Failed to fetch contacts for user type detection:', e)
+            type = 'agent'
+          }
+        }
+        
+        console.log('Final determined user type:', type)
+        setUserType(type || 'agent')
+      } catch (error) {
+        console.error('Failed to fetch user type:', error)
+        setUserType('agent') // Default to agent on error
+      } finally {
+        setLoadingUserType(false)
+      }
+    }
+
+    fetchUserType()
+  }, [isAuthed])
+
+  // Fetch contacts when authenticated (only for agents)
+  useEffect(() => {
+    if (!isAuthed || userType !== 'agent') {
+      console.log('App.jsx - Skipping contacts fetch:', { isAuthed, userType });
+      return;
+    }
+    
     async function fetchContacts() {
+      console.log('App.jsx - Fetching contacts for agent...');
       try {
         const resp = await fetch(
-          "https://wapi.twmresearchalert.com/backendphp/api/getContacts.php",
+          "https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/getContacts.php",
           {
             method: "GET",
-            credentials: "include",
+            credentials: "include", // This sends the session cookie
             headers: { "Content-Type": "application/json", "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" },
           }
         );
         const data = await resp.json();
+        console.log('App.jsx - getContacts response:', {
+          status: resp.status,
+          ok: data?.ok,
+          contactCount: data?.contacts?.length || 0,
+          allContactIds: data?.contacts?.map(c => ({ id: c.id, name: c.name })),
+          sampleContact: data?.contacts?.[0],
+        });
+        
         if (data?.ok && data.contacts) {
           // Map contacts to match ChatList format
           const mapped = data.contacts.map((c) => ({
@@ -70,14 +157,17 @@ export default function App() {
             last_seen: c.last_seen || "",
             avatar: (c.name || c.phone_number || "?").slice(0, 2).toUpperCase(),
           }));
+          console.log('App.jsx - Mapped contacts:', mapped.length, 'contacts');
           setContacts(mapped);
+        } else {
+          console.error('App.jsx - getContacts failed:', data);
         }
       } catch (e) {
-        console.error("Failed to load contacts:", e);
+        console.error("App.jsx - Failed to load contacts:", e);
       }
     }
     fetchContacts();
-  }, [isAuthed]);
+  }, [isAuthed, userType]);
 
   useEffect(() => {
     if (isAuthed) {
@@ -118,18 +208,68 @@ export default function App() {
     setMobileOpen(true)
   }
 
-  function handleLoginSuccess() {
+  function handleLoginSuccess(user) {
     setIsAuthed(true)
+    // Try to get user type from login response
+    if (user) {
+      const type = user?.type || user?.user_type || user?.userType
+      if (type) {
+        setUserType(type)
+        setLoadingUserType(false)
+      }
+    }
   }
 
   if (!isAuthed) {
     return <Login onLoginSuccess={handleLoginSuccess} />
   }
 
-  if (showLoader) {
+  if (showLoader || loadingUserType) {
     return <LoaderScreen />
   }
 
+  // Render Admin Panel if user is admin
+  if (userType === 'admin') {
+    return (
+      <div className="flex h-screen bg-(--surface-subtle) text-slate-900">
+        <AdminSidebar active={adminActiveSection} setActive={setAdminActiveSection} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <header className="h-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+            <div className="h-full px-6 flex items-center justify-between">
+              <h1 className="text-xl font-semibold tracking-tight">
+                {adminActiveSection === 'chat' && 'Live Chats'}
+                {adminActiveSection === 'contacts' && 'Contacts'}
+                {adminActiveSection === 'crm' && 'CRM Settings'}
+              </h1>
+              <div className="flex items-center gap-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-500">
+                  T N S <span className="text-xs tracking-[0.18em] text-emerald-500">Admin</span>
+                </p>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 transition"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-hidden bg-white">
+            <div className="h-full w-full flex flex-col">
+              <div className="flex-1 min-h-0">
+                {adminActiveSection === 'chat' && <AdminChatSection />}
+                {adminActiveSection === 'contacts' && <AdminContactsSection />}
+                {adminActiveSection === 'crm' && <AdminCRMSettingsSection />}
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
+  // Render Chat Interface for agents
   return (
     <div className="min-h-screen bg-(--color-chatBg) flex items-center justify-center">
       <div className="hidden md:flex w-full max-w-[1600px]">

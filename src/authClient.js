@@ -5,7 +5,7 @@ const AUTH_FLAG_KEY = 'isAuthenticated';
 const USER_DATA_KEY = 'authUser';
 
 // Adjust this if your backend runs at a different origin/path
-const BASE_URL = 'https://wapi.twmresearchalert.com/backendphp/api';
+const BASE_URL = 'https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api';
 
 export const authClient = {
   isAuthenticated() {
@@ -22,6 +22,34 @@ export const authClient = {
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
+    }
+  },
+
+  // Fetch current user info from backend (to get user type from session)
+  async getCurrentUser() {
+    try {
+      const resp = await fetch(`${BASE_URL}/getCurrentUser.php`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json', 
+          "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" 
+        },
+      });
+
+      const data = await resp.json().catch(() => ({}));
+      
+      if (resp.ok && data?.ok === true && data?.user) {
+        // Update stored user data
+        localStorage.setItem(USER_DATA_KEY, JSON.stringify(data.user));
+        return data.user;
+      }
+      
+      // Fallback to stored user if API fails
+      return this.getUser();
+    } catch {
+      // Fallback to stored user if API fails
+      return this.getUser();
     }
   },
 

@@ -33,7 +33,7 @@ export default function ChatWindow({
       }
       try {
         const res = await fetch(
-          `https://wapi.twmresearchalert.com/backendphp/api/getMessages.php?contact_id=${activeChat}`,
+          `https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/getMessages.php?contact_id=${activeChat}`,
           { credentials: "include" ,
           headers: { "Content-Type": "application/json", "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" },
         });
@@ -144,7 +144,7 @@ export default function ChatWindow({
 
     try {
       await fetch(
-        "https://wapi.twmresearchalert.com/backendphp/api/sendMessage.php",
+        "https://unimpaired-overfrugal-milda.ngrok-free.dev/BACKENDPHP/api/sendMessage.php",
         {
           method: "POST",
           credentials: "include",
