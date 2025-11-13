@@ -18,6 +18,13 @@ function normalizeContacts(data) {
       lastMessageTime:
         item.lastMessageTime ?? item.last_message_time ?? item.last_seen ?? item.time ?? '',
       avatar: item.avatar || name.slice(0, 2).toUpperCase(),
+      assignedAgent:
+        item.assigned_agent || 
+        item.agent_name || 
+        item.assigned_to || 
+        item.assigned_agent_name ||
+        item.agent?.name ||
+        null,
     }
   })
 }
@@ -247,8 +254,21 @@ export default function ChatSection() {
                     {initials}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900">{contact.name}</p>
-                    <p className="truncate text-xs text-slate-500">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="truncate text-sm font-semibold text-slate-900">{contact.name}</p>
+                      {contact.assignedAgent ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200/50">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                          {contact.assignedAgent}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-medium border border-slate-200/50">
+                          <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+                          Unassigned
+                        </span>
+                      )}
+                    </div>
+                    <p className="truncate text-xs text-slate-500 mt-0.5">
                       {contact.lastMessage || 'No recent activity'}
                     </p>
                   </div>
@@ -269,15 +289,36 @@ export default function ChatSection() {
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3 border-b border-slate-100 bg-white px-6 py-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-400 to-emerald-600 text-white text-sm font-semibold">
-                {activeContact.avatar?.slice(0, 2).toUpperCase() || '??'}
+            <div className="flex items-center justify-between gap-4 border-b border-slate-100 bg-white px-6 py-4">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-400 to-emerald-600 text-white text-sm font-semibold shadow-sm">
+                  {activeContact.avatar?.slice(0, 2).toUpperCase() || '??'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-semibold text-slate-900">{activeContact.name}</p>
+                  <p className="truncate text-xs text-slate-500">
+                    Last active {formatTime(activeContact.lastMessageTime) || 'Recently'}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-base font-semibold text-slate-900">{activeContact.name}</p>
-                <p className="truncate text-xs text-slate-500">
-                  Last active {formatTime(activeContact.lastMessageTime) || 'Recently'}
-                </p>
+              <div className="flex-shrink-0">
+                {activeContact.assignedAgent ? (
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Assigned to</span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200/60 shadow-sm">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                      {activeContact.assignedAgent}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Assigned to</span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-xs font-medium border border-slate-200/60 shadow-sm">
+                      <span className="h-2 w-2 rounded-full bg-slate-400"></span>
+                      Unassigned
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
