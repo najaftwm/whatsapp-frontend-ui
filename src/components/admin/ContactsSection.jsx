@@ -101,9 +101,22 @@ export default function ContactsSection() {
     }
   }
 
-  const handleDelete = async (contact) => {
+  const handleUnassign = async (contact) => {
     if (!contact?.id) return
-    const confirmed = window.confirm(`Delete ${contact.name}? This action cannot be undone.`)
+    
+    const customerId = contact.customer_id || contact.contact_id || contact.id
+    if (!customerId) {
+      alert('Unable to identify customer ID')
+      return
+    }
+
+    // Only allow unassigning if there's an assigned agent
+    if (!contact.assignedAgent) {
+      alert('No agent assigned to unassign')
+      return
+    }
+
+    const confirmed = window.confirm(`Unassign agent from ${contact.name}?`)
     if (!confirmed) return
 
     setDeletingContactId(contact.id)
@@ -117,17 +130,17 @@ export default function ContactsSection() {
             Authorization: 'Bearer q6ktqrPs3wZ4kvZAzNdi7',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ contact_id: contact.id }),
+          body: JSON.stringify({ customer_id: customerId }),
         }
       )
       const data = await res.json().catch(() => ({}))
       if (!res.ok || data?.ok !== true) {
-        throw new Error(data?.error || 'Failed to delete contact')
+        throw new Error(data?.error || 'Failed to unassign agent')
       }
       await refresh()
-    } catch (deleteError) {
-      console.error('Failed to delete contact', deleteError)
-      alert(deleteError?.message || 'Unable to delete contact right now.')
+    } catch (unassignError) {
+      console.error('Failed to unassign agent', unassignError)
+      alert(unassignError?.message || 'Unable to unassign agent right now.')
     } finally {
       setDeletingContactId(null)
     }
@@ -242,10 +255,10 @@ export default function ContactsSection() {
                             {contact.assignedAgent ? 'Change Agent' : 'Assign Agent'}
                           </button>
                           <button
-                            onClick={() => handleDelete(contact)}
+                            onClick={() => handleUnassign(contact)}
                             className="flex h-9 w-9 items-center justify-center rounded-full border border-rose-200 text-rose-500 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            title="Delete contact"
-                            disabled={deletingContactId === contact.id}
+                            title={contact.assignedAgent ? "Unassign agent" : "No agent assigned"}
+                            disabled={deletingContactId === contact.id || !contact.assignedAgent}
                           >
                             <MinusCircle size={16} />
                           </button>
