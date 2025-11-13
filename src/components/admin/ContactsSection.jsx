@@ -122,15 +122,14 @@ export default function ContactsSection() {
     setDeletingContactId(contact.id)
     try {
       const res = await fetch(
-        'https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/deleteContact.php',
+        `https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKEND/api/deleteAssignments?customer_id=${encodeURIComponent(customerId)}`,
         {
-          method: 'POST',
+          method: 'GET',
           credentials: 'include',
           headers: {
             Authorization: 'Bearer q6ktqrPs3wZ4kvZAzNdi7',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ customer_id: customerId }),
         }
       )
       const data = await res.json().catch(() => ({}))
