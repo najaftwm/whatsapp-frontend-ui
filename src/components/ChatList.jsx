@@ -255,8 +255,10 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
       {/* Chat list */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#2a3942] scrollbar-track-transparent">
         {loading ? (
-          <div className="p-4 text-center text-gray-400">
-            Loading contacts...
+          <div className="flex items-center justify-center p-4">
+            <div className="animate-spin inline-block size-6 border-[3px] border-current border-t-transparent text-[#00a884] rounded-full" role="status" aria-label="loading">
+              <span className="sr-only">Loading...</span>
+            </div>
           </div>
         ) : error ? (
           <div className="p-4 text-center text-red-400">{error}</div>

@@ -1,5 +1,6 @@
 // src/App.jsx
 import React, { useState, useEffect } from 'react'
+import { BarChart3, MessageCircle } from 'lucide-react'
 import ChatList from './components/ChatList'
 import ChatWindow from './components/ChatWindow'
 import Login from './components/Login'
@@ -11,36 +12,104 @@ import AdminChatSection from './components/admin/ChatSection'
 import AdminContactsSection from './components/admin/ContactsSection'
 import AdminCRMSettingsSection from './components/admin/CRMSettingsSection'
 
-const LoaderScreen = () => (
+// Agent loading screen (WhatsApp style with Lucide icons)
+const AgentLoaderScreen = () => (
   <div className="flex h-screen items-center justify-center bg-[#0b141a] text-center">
-    <div className="flex flex-col items-center gap-6 text-[#e9edef]">
-      <img
-        src="/whatsapp-seeklogo.png"
-        alt="WhatsApp"
-        className="h-20 w-20 opacity-100"
-      />
-      <div className="text-lg font-medium tracking-wide">WhatsApp</div>
-      <div className="w-52 h-1.5 bg-[#1f2c34] rounded-full overflow-hidden">
-        <div className="loader-bar h-full bg-[#00a884]" />
+    <div className="flex flex-col items-center gap-6">
+      <div className="relative overflow-hidden rounded-3xl">
+        <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[#00a884]/20 border border-[#00a884]/30 shadow-lg relative z-10">
+          <img
+            src="/whatsapp-seeklogo.png"
+            alt="WhatsApp"
+            className="h-12 w-12 opacity-100"
+          />
+        </div>
+        <div className="absolute inset-0 rounded-3xl overflow-hidden">
+          <div className="absolute inset-0 bg-linear-to-r from-transparent via-[#00a884]/60 to-transparent animate-[shimmer_2s_ease-in-out_infinite] transform -skew-x-12"></div>
+        </div>
       </div>
-      <div className="text-sm text-[#8696a0] flex items-center gap-2">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-        End-to-end encrypted
+      <div className="flex flex-col items-center gap-2">
+        <div className="text-xl font-semibold text-[#e9edef] tracking-wide">WhatsApp</div>
+        <div className="text-sm text-[#8696a0]">Connecting to your chats...</div>
+      </div>
+      <div className="w-52 h-1.5 bg-[#1f2c34] rounded-full overflow-hidden">
+        <div className="loader-bar h-full bg-linear-to-r from-[#00a884] to-[#00d9bb]" />
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="animate-spin inline-block size-4 border-2 border-current border-t-transparent text-[#00a884] rounded-full" role="status" aria-label="loading">
+          <span className="sr-only">Loading...</span>
+        </div>
+        <div className="text-sm text-[#8696a0] flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-[#8696a0]"
+          >
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <span>End-to-end encrypted</span>
+        </div>
       </div>
     </div>
+    <style>{`
+      @keyframes shimmer {
+        0% {
+          transform: translateX(-150%) skewX(-12deg);
+        }
+        100% {
+          transform: translateX(150%) skewX(-12deg);
+        }
+      }
+    `}</style>
+  </div>
+)
+
+// Admin loading screen
+const AdminLoaderScreen = () => (
+  <div className="flex h-screen items-center justify-center bg-slate-900 text-center">
+    <div className="flex flex-col items-center gap-6">
+      <div className="relative overflow-hidden rounded-3xl">
+        <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-500/20 border border-emerald-500/30 shadow-lg relative z-10">
+          <BarChart3 className="text-emerald-400" size={40} />
+        </div>
+        <div className="absolute inset-0 rounded-3xl overflow-hidden">
+          <div className="absolute inset-0 bg-linear-to-r from-transparent via-emerald-400/60 to-transparent animate-[shimmer_2s_ease-in-out_infinite] transform -skew-x-12"></div>
+        </div>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-sm uppercase tracking-[0.24em] text-slate-400 font-semibold">
+          TNS
+        </p>
+        <h1 className="text-2xl font-semibold text-slate-100">Admin Panel</h1>
+      </div>
+      <div className="w-52 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+        <div className="loader-bar h-full bg-linear-to-r from-emerald-500 to-emerald-400" />
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="animate-spin inline-block size-4 border-2 border-current border-t-transparent text-emerald-500 rounded-full" role="status" aria-label="loading">
+          <span className="sr-only">Loading...</span>
+        </div>
+        <div className="text-sm text-slate-400">Loading dashboard...</div>
+      </div>
+    </div>
+    <style>{`
+      @keyframes shimmer {
+        0% {
+          transform: translateX(-150%) skewX(-12deg);
+        }
+        100% {
+          transform: translateX(150%) skewX(-12deg);
+        }
+      }
+    `}</style>
   </div>
 )
 
@@ -226,37 +295,24 @@ export default function App() {
   }
 
   if (showLoader || loadingUserType) {
-    return <LoaderScreen />
+    // Try to get user type from stored user to show correct loader
+    const storedUser = authClient.getUser()
+    const detectedType = userType || storedUser?.type || storedUser?.user_type || storedUser?.userType
+    
+    // Show admin loader for admin users, agent loader for agent users
+    if (detectedType === 'admin') {
+      return <AdminLoaderScreen />
+    }
+    return <AgentLoaderScreen />
   }
 
   // Render Admin Panel if user is admin
   if (userType === 'admin') {
     return (
-      <div className="flex h-screen bg-(--surface-subtle) text-slate-900">
-        <AdminSidebar active={adminActiveSection} setActive={setAdminActiveSection} />
+      <div className="flex h-screen bg-slate-900 text-slate-100">
+        <AdminSidebar active={adminActiveSection} setActive={setAdminActiveSection} onLogout={handleLogout} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="h-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-            <div className="h-full px-6 flex items-center justify-between">
-              <h1 className="text-xl font-semibold tracking-tight">
-                {adminActiveSection === 'chat' && 'Live Chats'}
-                {adminActiveSection === 'contacts' && 'Contacts'}
-                {adminActiveSection === 'crm' && 'CRM Settings'}
-              </h1>
-              <div className="flex items-center gap-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-500">
-                  TNS <span className="text-xs tracking-[0.18em] text-emerald-500">Admin</span>
-                </p>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 transition"
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          </header>
-
-          <main className="flex-1 overflow-hidden bg-white">
+          <main className="flex-1 overflow-hidden bg-slate-900">
             <div className="h-full w-full flex flex-col">
               <div className="flex-1 min-h-0">
                 {adminActiveSection === 'chat' && <AdminChatSection />}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Search } from 'lucide-react'
 import { API_BASE_URL, AUTH_HEADERS } from '../../config/api'
 
 const API_BASE = API_BASE_URL
@@ -211,29 +212,34 @@ export default function ChatSection() {
   }
 
   return (
-    <div className="flex h-full min-h-0 bg-white">
-      <aside className="flex w-80 min-h-0 flex-col border-r border-slate-100 bg-slate-50/70">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            type="text"
-            placeholder="Search contacts…"
-            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-3 pr-3 text-sm text-slate-700 shadow-sm placeholder:text-slate-400 focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-200/70"
-          />
+    <div className="flex h-full min-h-0 bg-slate-900">
+      <aside className="flex w-80 min-h-0 flex-col border-r border-slate-700 bg-slate-800">
+        <div className="flex items-center border-b border-slate-700 px-6 h-[72px]">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              type="text"
+              placeholder="Search contacts…"
+              className="w-full rounded-xl border border-slate-600 bg-slate-700 py-2 pl-10 pr-3 text-sm text-slate-100 shadow-sm placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            />
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
           {contactsLoading ? (
-            <div className="rounded-xl bg-white px-4 py-6 text-center text-sm text-slate-500 shadow-sm">
-              Loading contacts…
+            <div className="flex items-center justify-center rounded-xl bg-slate-700 px-4 py-6">
+              <div className="animate-spin inline-block size-6 border-[3px] border-current border-t-transparent text-emerald-500 rounded-full" role="status" aria-label="loading">
+                <span className="sr-only">Loading...</span>
+              </div>
             </div>
           ) : contactsError ? (
-            <div className="rounded-xl bg-rose-50 px-4 py-4 text-sm text-rose-600 shadow-sm">
+            <div className="rounded-xl bg-rose-900/30 px-4 py-4 text-sm text-rose-400 shadow-sm border border-rose-800/50">
               {contactsError}
             </div>
           ) : filteredContacts.length === 0 ? (
-            <div className="rounded-xl bg-white px-4 py-6 text-center text-sm text-slate-500 shadow-sm">
+            <div className="rounded-xl bg-slate-700 px-4 py-6 text-center text-sm text-slate-300 shadow-sm">
               No contacts found
             </div>
           ) : (
@@ -244,33 +250,35 @@ export default function ChatSection() {
                 <button
                   key={contact.id}
                   onClick={() => setActiveContactId(contact.id)}
-                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition ${
-                    isActive ? 'bg-white shadow ring-1 ring-emerald-100' : 'bg-white/90 hover:bg-white'
+                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition cursor-pointer ${
+                    isActive 
+                      ? 'bg-slate-700 shadow ring-1 ring-emerald-500/30' 
+                      : 'bg-slate-700/50 hover:bg-slate-700'
                   }`}
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-400 to-emerald-600 text-white text-sm font-semibold">
                     {initials}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="truncate text-sm font-semibold text-slate-900">{contact.name}</p>
+                    <div className="flex flex-col gap-1">
+                      <p className="truncate text-sm font-semibold text-slate-100">{contact.name}</p>
                       {contact.assignedAgent ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200/50">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold border border-emerald-500/30 w-fit">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                           {contact.assignedAgent}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-medium border border-slate-200/50">
-                          <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-600/50 text-slate-400 text-[10px] font-medium border border-slate-500/50 w-fit">
+                          <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
                           Unassigned
                         </span>
                       )}
                     </div>
-                    <p className="truncate text-xs text-slate-500 mt-0.5">
+                    <p className="truncate text-xs text-slate-400 mt-0.5">
                       {contact.lastMessage || 'No recent activity'}
                     </p>
                   </div>
-                  <span className="text-[11px] font-medium text-slate-400">
+                  <span className="text-[11px] font-medium text-slate-500 shrink-0">
                     {formatTime(contact.lastMessageTime)}
                   </span>
                 </button>
@@ -280,30 +288,30 @@ export default function ChatSection() {
         </div>
       </aside>
 
-      <section className="flex min-h-0 flex-1 flex-col bg-[linear-gradient(135deg,#fafdff,#f1f5f9)]">
+      <section className="flex min-h-0 flex-1 flex-col bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
         {!activeContact ? (
           <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
             Select a contact to view messages
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-4 border-b border-slate-100 bg-white px-6 py-4">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-700 bg-slate-800/50 px-6 h-[72px]">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-400 to-emerald-600 text-white text-sm font-semibold shadow-sm">
                   {activeContact.avatar?.slice(0, 2).toUpperCase() || '??'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold text-slate-900">{activeContact.name}</p>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className="truncate text-base font-semibold text-slate-100">{activeContact.name}</p>
+                  <p className="truncate text-xs text-slate-400">
                     Last active {formatTime(activeContact.lastMessageTime) || 'Recently'}
                   </p>
                 </div>
               </div>
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 {activeContact.assignedAgent ? (
                   <div className="flex flex-col items-end gap-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Assigned to</span>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200/60 shadow-sm">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30 shadow-sm">
                       <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
                       {activeContact.assignedAgent}
                     </span>
@@ -311,8 +319,8 @@ export default function ChatSection() {
                 ) : (
                   <div className="flex flex-col items-end gap-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Assigned to</span>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-xs font-medium border border-slate-200/60 shadow-sm">
-                      <span className="h-2 w-2 rounded-full bg-slate-400"></span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-400 text-xs font-medium border border-slate-600 shadow-sm">
+                      <span className="h-2 w-2 rounded-full bg-slate-500"></span>
                       Unassigned
                     </span>
                   </div>
@@ -320,17 +328,27 @@ export default function ChatSection() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div 
+              className="flex-1 overflow-y-auto px-6 py-6 relative"
+              style={{
+                background: "url('https://raw.githubusercontent.com/jazimabbas/whatsapp-web-ui/refs/heads/master/public/assets/images/bg-chat-room.png')",
+                backgroundSize: "430px 780px",
+                backgroundRepeat: "repeat",
+              }}
+            >
+              <div className="relative z-10 h-full">
               {messagesLoading ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500">
-                  Loading messages…
+                <div className="flex h-full items-center justify-center">
+                  <div className="animate-spin inline-block size-6 border-[3px] border-current border-t-transparent text-emerald-500 rounded-full" role="status" aria-label="loading">
+                    <span className="sr-only">Loading...</span>
+                  </div>
                 </div>
               ) : messagesError ? (
-                <div className="flex h-full items-center justify-center text-sm text-rose-500">
+                <div className="flex h-full items-center justify-center text-sm text-rose-400">
                   {messagesError}
                 </div>
               ) : messages.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                <div className="flex h-full items-center justify-center text-sm text-slate-400">
                   No messages yet for this contact
                 </div>
               ) : (
@@ -346,12 +364,14 @@ export default function ChatSection() {
                           className={`max-w-[70%] rounded-3xl px-4 py-3 text-sm shadow ${
                             isCompany
                               ? 'rounded-tr-sm bg-emerald-500 text-white shadow-emerald-500/25'
-                              : 'rounded-tl-sm bg-white text-slate-700 shadow-slate-300/40'
+                              : 'rounded-tl-sm bg-slate-700 text-slate-100 shadow-slate-900/50 border border-slate-600'
                           }`}
                         >
                           <p className="whitespace-pre-wrap wrap-break-word">{message.message}</p>
                           {message.timestamp && (
-                            <p className="mt-2 text-[10px] font-medium opacity-70 text-right">
+                            <p className={`mt-2 text-[10px] font-medium text-right ${
+                              isCompany ? 'opacity-70' : 'text-slate-400'
+                            }`}>
                               {formatTime(message.timestamp)}
                             </p>
                           )}
@@ -362,21 +382,31 @@ export default function ChatSection() {
                   <div ref={messageEndRef} />
                 </div>
               )}
+              </div>
             </div>
 
-            <div className="border-t border-slate-100 bg-white px-6 py-4">
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+            <div className="border-t border-slate-700 bg-slate-800/30 backdrop-blur-sm px-6 py-4">
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-600/50 bg-slate-800/40 backdrop-blur-sm px-4 py-2.5 shadow-sm overflow-hidden">
                 <input
                   value={messageInput}
                   onChange={(event) => setMessageInput(event.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && messageInput.trim() && activeContactId) {
+                      handleSend()
+                    }
+                  }}
                   type="text"
                   placeholder="Type a message…"
-                  className="flex-1 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
+                  className="flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
                   disabled={!activeContactId}
                 />
                 <button
                   onClick={handleSend}
-                  className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-500 ease-out hover:bg-emerald-600 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+                    messageInput.trim() && activeContactId
+                      ? 'translate-x-0 opacity-100'
+                      : 'translate-x-[200%] opacity-0 pointer-events-none'
+                  }`}
                   disabled={!messageInput.trim() || !activeContactId}
                 >
                   Send

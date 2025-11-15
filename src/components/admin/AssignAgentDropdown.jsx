@@ -96,43 +96,47 @@ export default function AssignAgentDropdown({ contactId, onAssign, isOpen, onClo
   const dropdownContent = (
     <div
       ref={dropdownRef}
-      className="fixed z-[9999] w-64 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl"
+      className="fixed z-9999 w-64 overflow-hidden rounded-2xl border border-slate-700 bg-slate-800 shadow-xl"
       style={{
         top: `${position.top}px`,
         right: `${position.right}px`,
       }}
     >
-      <div className="border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="border-b border-slate-700 bg-slate-700/50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
         Select Agent
       </div>
       <div className="max-h-60 overflow-y-auto">
         {agentsLoading ? (
-          <div className="px-4 py-3 text-sm text-slate-500">Loading agents…</div>
+          <div className="flex items-center justify-center px-4 py-3">
+            <div className="animate-spin inline-block size-6 border-[3px] border-current border-t-transparent text-emerald-500 rounded-full" role="status" aria-label="loading">
+              <span className="sr-only">Loading...</span>
+            </div>
+          </div>
         ) : agentsError ? (
-          <div className="px-4 py-3 text-sm text-rose-500">
+          <div className="px-4 py-3 text-sm text-rose-400">
             <p>{agentsError}</p>
             <button
               onClick={() => refreshAgents()}
-              className="mt-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+              className="mt-2 text-xs font-semibold text-emerald-400 hover:text-emerald-300 cursor-pointer"
             >
               Retry
             </button>
           </div>
         ) : agents.length === 0 ? (
-          <div className="px-4 py-3 text-sm text-slate-500">No agents available</div>
+          <div className="px-4 py-3 text-sm text-slate-400">No agents available</div>
         ) : (
           agents.map((agent) => (
             <button
               key={agent.id}
               onClick={() => handleAssign(agent.id)}
-              className="flex w-full items-start gap-3 px-4 py-3 text-left text-sm transition hover:bg-emerald-50 disabled:opacity-50"
+              className="flex w-full items-start gap-3 px-4 py-3 text-left text-sm transition hover:bg-emerald-500/10 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
               disabled={isAssigning}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 text-xs font-semibold">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-semibold">
                 {agent.name?.slice(0, 2).toUpperCase() || 'AG'}
               </div>
               <div className="flex flex-col">
-                <span className="font-semibold text-slate-800">{agent.name}</span>
+                <span className="font-semibold text-slate-100">{agent.name}</span>
                 {agent.email && <span className="text-xs text-slate-400">{agent.email}</span>}
               </div>
             </button>
@@ -143,8 +147,8 @@ export default function AssignAgentDropdown({ contactId, onAssign, isOpen, onClo
         <div
           className={`px-4 py-3 text-xs font-semibold ${
             message.type === 'success'
-              ? 'bg-emerald-50 text-emerald-600'
-              : 'bg-rose-50 text-rose-600'
+              ? 'bg-emerald-500/20 text-emerald-300'
+              : 'bg-rose-900/30 text-rose-400'
           }`}
         >
           {message.text}

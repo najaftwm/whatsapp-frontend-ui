@@ -3,6 +3,7 @@ import {
   MessageCircle,
   Settings,
   UserRound,
+  LogOut,
 } from 'lucide-react'
 
 const items = [
@@ -11,9 +12,9 @@ const items = [
   { id: 'crm', label: 'CRM Settings', icon: Settings },
 ]
 
-export default function Sidebar({ active, setActive }) {
+export default function Sidebar({ active, setActive, onLogout }) {
   return (
-    <aside className="relative flex w-72 shrink-0 flex-col bg-linear-to-br from-emerald-600 via-emerald-500 to-emerald-400 text-white">
+    <aside className="relative flex w-64 shrink-0 flex-col bg-linear-to-br from-emerald-600 via-emerald-500 to-emerald-400 text-white">
       <div className="absolute inset-x-0 top-0 h-28 bg-emerald-700/40 blur-3xl opacity-80 pointer-events-none" />
 
       <div className="relative z-10 flex flex-col h-full">
@@ -42,17 +43,17 @@ export default function Sidebar({ active, setActive }) {
                 <button
                   key={item.id}
                   onClick={() => setActive(item.id)}
-                  className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
+                  className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-white text-emerald-600 shadow-lg shadow-emerald-900/10'
-                      : 'text-white/80 hover:bg-white/10 hover:text-white'
+                      : 'text-white/80 hover:bg-black/20 hover:text-white'
                   }`}
                 >
                   <span
                     className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
                       isActive
                         ? 'border-emerald-100 bg-emerald-50 text-emerald-600'
-                        : 'border-white/20 bg-white/5 group-hover:border-white/40'
+                        : 'border-white/20 bg-white/5 group-hover:border-black/40 group-hover:bg-black/20'
                     }`}
                   >
                     <Icon size={18} />
@@ -64,17 +65,19 @@ export default function Sidebar({ active, setActive }) {
           </div>
         </nav>
 
-        {/* User Info */}
+        {/* Logout Button */}
         <div className="border-t border-white/10 px-6 py-5">
-          <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-4 backdrop-blur">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-emerald-600 font-semibold">
-              A
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Admin</p>
-              <p className="text-xs text-white/75">Admin • Your Workspace</p>
-            </div>
-          </div>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="group w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white/80 hover:text-white hover:bg-red-500/15 hover:border-red-400/30 transition-all duration-200 border border-white/10 hover:shadow-lg hover:shadow-red-500/10 cursor-pointer"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 group-hover:bg-red-500/20 group-hover:border-red-400/30 transition-all duration-200">
+                <LogOut size={18} className="group-hover:text-red-200 transition-colors duration-200" />
+              </span>
+              <span className="group-hover:text-red-50 transition-colors duration-200">Logout</span>
+            </button>
+          )}
         </div>
       </div>
     </aside>
