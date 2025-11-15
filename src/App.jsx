@@ -4,6 +4,7 @@ import ChatList from './components/ChatList'
 import ChatWindow from './components/ChatWindow'
 import Login from './components/Login'
 import { authClient } from './authClient'
+import { API_BASE_URL, AUTH_HEADERS } from './config/api'
 // Import Admin Panel components
 import AdminSidebar from './components/admin/Sidebar'
 import AdminChatSection from './components/admin/ChatSection'
@@ -87,11 +88,11 @@ export default function App() {
         if (!type) {
           try {
             const resp = await fetch(
-              "https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/getContacts.php",
+              `${API_BASE_URL}/getContacts.php`,
               {
                 method: "GET",
                 credentials: "include",
-                headers: { "Content-Type": "application/json", "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" },
+                headers: AUTH_HEADERS,
               }
             )
             const data = await resp.json()
@@ -130,11 +131,11 @@ export default function App() {
       console.log('App.jsx - Fetching contacts for agent...');
       try {
         const resp = await fetch(
-          "https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/getContacts.php",
+          `${API_BASE_URL}/getContacts.php`,
           {
             method: "GET",
             credentials: "include", // This sends the session cookie
-            headers: { "Content-Type": "application/json", "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" },
+            headers: AUTH_HEADERS,
           }
         );
         const data = await resp.json();

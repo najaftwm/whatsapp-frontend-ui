@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { pusher } from "../pusherClient";
+import { API_BASE_URL, AUTH_HEADERS } from "../config/api";
 
 export default function ChatWindow({
   activeChat,
@@ -33,9 +34,9 @@ export default function ChatWindow({
       }
       try {
         const res = await fetch(
-          `https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/getMessages.php?contact_id=${activeChat}`,
+          `${API_BASE_URL}/getMessages.php?contact_id=${activeChat}`,
           { credentials: "include" ,
-          headers: { "Content-Type": "application/json", "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" },
+          headers: AUTH_HEADERS,
         });
         const data = await res.json();
         if (data?.ok && data.messages) {
@@ -144,11 +145,11 @@ export default function ChatWindow({
 
     try {
       await fetch(
-        "https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/sendMessage.php",
+        `${API_BASE_URL}/sendMessage.php`,
         {
           method: "POST",
           credentials: "include",
-          headers: { "Content-Type": "application/json", "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" },
+          headers: AUTH_HEADERS,
           body: JSON.stringify({
             contact_id: activeChat,
             message: messageText,

@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { MoreVertical, Search, LogOut, Settings } from "lucide-react";
+import { API_BASE_URL, AUTH_HEADERS } from "../config/api";
+import { authClient } from "../authClient";
 
 const normalizeContacts = (value) => {
   if (!Array.isArray(value)) return [];
@@ -85,6 +87,23 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
   const [contacts, setContacts] = useState(() => normalizeContacts(chats));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [user, setUser] = useState(null);
+
+  // Get logged-in user info
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        // Try to get fresh user data from API
+        const currentUser = await authClient.getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        // Fallback to stored user data
+        const storedUser = authClient.getUser();
+        setUser(storedUser);
+      }
+    }
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     setContacts(normalizeContacts(chats));
@@ -98,11 +117,11 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
       console.log('ChatList - Fetching contacts (this should only show assigned contacts for agents)...');
       try {
         const resp = await fetch(
-          "https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/getContacts.php",
+          `${API_BASE_URL}/getContacts.php`,
           {
             method: "GET",
             credentials: "include", // This sends the session cookie
-            headers: { "Content-Type": "application/json", "Authorization": "Bearer q6ktqrPs3wZ4kvZAzNdi7" },
+            headers: AUTH_HEADERS,
           }
         );
         const data = await resp.json().catch(() => ({}));
@@ -170,12 +189,22 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
     <div className="w-full h-full flex flex-col bg-[#111b21] border-r border-[#2a2f32]">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 bg-[#202c33] border-b border-[#2a2f32] h-[72px]">
-        <div className="w-11 h-11 rounded-full overflow-hidden cursor-pointer">
-          <img
-            src="https://imgs.search.brave.com/yyohYnmzAAnkfFJW05xsD3s5CgX2w39fc_AGW-kFWFo/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly90My5m/dGNkbi5uZXQvanBn/LzEyLzgxLzEyLzE2/LzM2MF9GXzEyODEx/MjE2NjNfSmV4eXJI/ckFCZUhjOEl0Q3lG/Qk1DR2hqZVBRekxV/QlYuanBn"
-            alt="Profile"
-            className="w-full h-full object-cover"
-          />
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-11 h-11 rounded-full overflow-hidden cursor-pointer shrink-0">
+            <img
+              src="/profile-picture.png"
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[15px] font-medium text-white truncate">
+              {user?.name || user?.full_name || user?.agent_name || user?.username || user?.email || "Agent"}
+            </h3>
+            <p className="text-xs text-[#8696a0] truncate">
+              {user?.email || "Online"}
+            </p>
+          </div>
         </div>
 
         <div className="relative" ref={menuRef}>

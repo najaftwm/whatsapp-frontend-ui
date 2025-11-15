@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { MinusCircle } from 'lucide-react'
 import useContacts from './hooks/useContacts'
 import AssignAgentDropdown from './AssignAgentDropdown'
+import { API_BASE_URL, AUTH_HEADERS } from '../../config/api'
 
 function formatTimeLabel(raw) {
   if (!raw) return '—'
@@ -64,13 +65,10 @@ export default function ContactsSection() {
     console.log('Assigning agent:', { customer_id: contactId, agent_id: agentId })
     
     try {
-      const res = await fetch('https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/assignAgent.php', {
+      const res = await fetch(`${API_BASE_URL}/assignAgent.php`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          Authorization: 'Bearer q6ktqrPs3wZ4kvZAzNdi7',
-          'Content-Type': 'application/json',
-        },
+        headers: AUTH_HEADERS,
         body: JSON.stringify({ customer_id: contactId, agent_id: agentId }),
       })
       
@@ -120,14 +118,11 @@ export default function ContactsSection() {
     setDeletingContactId(contact.id)
     try {
       const res = await fetch(
-        `https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api/deleteAssignment.php?customer_id=${encodeURIComponent(customerId)}`,
+        `${API_BASE_URL}/deleteAssignment.php?customer_id=${encodeURIComponent(customerId)}`,
         {
           method: 'GET',
           credentials: 'include',
-          headers: {
-            Authorization: 'Bearer q6ktqrPs3wZ4kvZAzNdi7',
-            'Content-Type': 'application/json',
-          },
+          headers: AUTH_HEADERS,
         }
       )
       const data = await res.json().catch(() => ({}))

@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { API_BASE_URL, AUTH_HEADERS } from '../../config/api'
 
-const API_BASE = 'https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api'
-const AUTH_HEADER = {
-  Authorization: 'Bearer q6ktqrPs3wZ4kvZAzNdi7',
-  'Content-Type': 'application/json',
-}
+const API_BASE = API_BASE_URL
+const AUTH_HEADER = AUTH_HEADERS
 
 function normalizeContacts(data) {
   if (!Array.isArray(data)) return []

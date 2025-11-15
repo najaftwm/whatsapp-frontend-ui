@@ -1,11 +1,13 @@
 // Lightweight auth client that talks to PHP backend (backendphp/api/login.php)
 // Stores auth state in localStorage (isAuthenticated) to match existing App.jsx expectations.
 
+import { API_BASE_URL } from './config/api'
+
 const AUTH_FLAG_KEY = 'isAuthenticated';
 const USER_DATA_KEY = 'authUser';
 
-// Adjust this if your backend runs at a different origin/path
-const BASE_URL = 'https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api';
+// Use centralized API base URL
+const BASE_URL = API_BASE_URL;
 
 export const authClient = {
   isAuthenticated() {

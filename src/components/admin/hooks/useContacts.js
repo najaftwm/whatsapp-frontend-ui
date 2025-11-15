@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { API_BASE_URL, AUTH_HEADERS } from '../../../config/api'
 
-const API_BASE = 'https://unimpaired-overfrugal-milda.ngrok-free.dev/backendfrontend/BACKENDPHP/api'
-const AUTH_HEADERS = {
-  Authorization: 'Bearer q6ktqrPs3wZ4kvZAzNdi7',
-  'Content-Type': 'application/json',
-}
+const API_BASE = API_BASE_URL
 
 function normalizeContacts(payload) {
   if (!Array.isArray(payload)) return []
