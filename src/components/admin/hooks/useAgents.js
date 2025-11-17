@@ -34,7 +34,6 @@ export default function useAgents() {
       const mapped = normalizeAgents(data.agents || data.data || [])
       setAgents(mapped)
     } catch (err) {
-      console.error('Failed to load agents', err)
       setError(err?.message || 'Failed to load agents')
       setAgents([])
     } finally {

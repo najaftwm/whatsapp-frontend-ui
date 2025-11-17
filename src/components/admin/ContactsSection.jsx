@@ -45,7 +45,6 @@ function formatTimeLabel(raw) {
       hour12: true,
     }).format(date)
   } catch (error) {
-    console.error('Failed to format date', error)
     return '—'
   }
 }
@@ -60,11 +59,8 @@ export default function ContactsSection() {
 
   const handleAssign = async (contactId, agentId) => {
     if (!contactId || !agentId) {
-      console.error('Missing required IDs:', { contactId, agentId })
       throw new Error('Missing contact ID or agent ID')
     }
-    
-    console.log('Assigning agent:', { customer_id: contactId, agent_id: agentId })
     
     try {
       const res = await fetch(`${API_BASE_URL}/assignAgent.php`, {
@@ -74,12 +70,9 @@ export default function ContactsSection() {
         body: JSON.stringify({ customer_id: contactId, agent_id: agentId }),
       })
       
-      const data = await res.json().catch((parseError) => {
-        console.error('Failed to parse response:', parseError)
+      const data = await res.json().catch(() => {
         return {}
       })
-      
-      console.log('Assignment response:', { status: res.status, data })
       
       if (!res.ok) {
         throw new Error(data?.error || `HTTP ${res.status}: ${res.statusText}`)
@@ -90,11 +83,8 @@ export default function ContactsSection() {
       }
       
       // Refresh contacts to get latest data from server
-      console.log('Refreshing contacts after assignment...')
       await refresh()
-      console.log('Contacts refreshed')
     } catch (assignError) {
-      console.error('Failed to assign agent:', assignError)
       throw assignError
     }
   }
@@ -145,7 +135,6 @@ export default function ContactsSection() {
       setNotification({ type: 'success', message: `Agent unassigned from ${contact.name}` })
       setTimeout(() => setNotification(null), 3000)
     } catch (unassignError) {
-      console.error('Failed to unassign agent', unassignError)
       setNotification({ type: 'error', message: unassignError?.message || 'Unable to unassign agent right now.' })
       setTimeout(() => setNotification(null), 3000)
     } finally {

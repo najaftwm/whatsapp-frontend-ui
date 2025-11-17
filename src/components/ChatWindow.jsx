@@ -8,9 +8,13 @@ import {
   MoreVertical,
   ArrowLeft,
   XCircle,
+  X,
+  FileText,
 } from "lucide-react";
 import { pusher } from "../pusherClient";
 import { API_BASE_URL, AUTH_HEADERS } from "../config/api";
+import MessageWithMedia from "./admin/MessageWithMedia";
+import TemplatePopup from "./admin/TemplatePopup";
 
 export default function ChatWindow({
   activeChat,
@@ -21,7 +25,13 @@ export default function ChatWindow({
 }) {
   const [input, setInput] = useState("");
   const [chatMessages, setChatMessages] = useState(messages || []);
+  const [selectedMedia, setSelectedMedia] = useState(null);
+  const [mediaPreview, setMediaPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [showTemplatePopup, setShowTemplatePopup] = useState(false);
+  const mediaCacheRef = useRef(new Map());
   const endRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -45,12 +55,14 @@ export default function ChatWindow({
             id: m.id,
             message: m.message_text || '',
             sender_type: m.sender_type || 'customer',
-            timestamp: m.timestamp
+            timestamp: m.timestamp,
+            mediaType: m.media_type || null,
+            mediaFilePath: m.media_file_path || null,
+            mediaFileName: m.media_file_name || null,
           }));
           setChatMessages(mapped);
         }
       } catch (e) {
-        console.error("Failed to load messages:", e);
         setChatMessages([]);
       }
     }
@@ -73,7 +85,7 @@ export default function ChatWindow({
             const lastIdx = [...prev].reverse().findIndex(m => {
               if (m.sender_type !== 'company') return false;
               const id = typeof m.id === 'string' ? m.id : '';
-              return id.startsWith('temp-') && m.message === text;
+              return id.startsWith('temp-') && (m.message === text || m.isPending);
             });
             if (lastIdx !== -1) {
               const idx = prev.length - 1 - lastIdx;
@@ -83,6 +95,10 @@ export default function ChatWindow({
                 message: text,
                 sender_type: 'company',
                 timestamp: data.timestamp || new Date().toISOString(),
+                mediaType: data.media_type || next[idx].mediaType || null,
+                mediaFilePath: data.media_file_path || next[idx].mediaFilePath || null,
+                mediaFileName: data.media_file_name || next[idx].mediaFileName || null,
+                isPending: false,
               };
               return next;
             }
@@ -97,6 +113,9 @@ export default function ChatWindow({
             message: text,
             sender_type: data.sender_type || 'customer',
             timestamp: data.timestamp || new Date().toISOString(),
+            mediaType: data.media_type || null,
+            mediaFilePath: data.media_file_path || null,
+            mediaFileName: data.media_file_name || null,
           }];
         });
       }
@@ -124,8 +143,185 @@ export default function ChatWindow({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
 
+  // Clear media when switching chats
+  useEffect(() => {
+    setSelectedMedia(null);
+    setMediaPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [activeChat]);
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      mediaCacheRef.current.forEach((url) => URL.revokeObjectURL(url));
+      mediaCacheRef.current.clear();
+    };
+  }, []);
+
+  const getMediaType = (mimeType) => {
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType.startsWith('audio/')) return 'audio';
+    if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('text') || mimeType.includes('zip')) return 'document';
+    return 'document';
+  };
+
+  const handleMediaSelect = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (50MB max)
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('File size exceeds 50MB limit');
+      return;
+    }
+
+    setSelectedMedia(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setMediaPreview(e.target.result);
+    };
+
+    if (file.type.startsWith('image/')) {
+      reader.readAsDataURL(file);
+    } else if (file.type.startsWith('video/')) {
+      reader.readAsDataURL(file);
+    } else {
+      setMediaPreview(null);
+    }
+  };
+
+  const handleMediaUpload = async () => {
+    if (!selectedMedia || !activeChat || uploading) return;
+
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append('media', selectedMedia);
+    formData.append('contact_id', activeChat);
+    if (input.trim()) {
+      formData.append('message', input.trim());
+    }
+
+    const tempId = `temp-${Date.now()}`;
+    const messageText = input.trim() || 'Media file';
+
+    // Optimistic update
+    setChatMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        message: messageText,
+        sender_type: 'company',
+        timestamp: new Date().toISOString(),
+        mediaType: getMediaType(selectedMedia.type),
+        mediaPreview: mediaPreview,
+        isPending: true,
+      },
+    ]);
+
+    setInput('');
+    setSelectedMedia(null);
+    setMediaPreview(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/uploadMedia.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Authorization: AUTH_HEADERS.Authorization,
+        },
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data?.ok !== true) {
+        throw new Error(data?.error || 'Failed to upload media');
+      }
+
+      // Update message with server response
+      setChatMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempId
+            ? {
+                ...msg,
+                id: data.message_id.toString(),
+                mediaType: data.media_type,
+                mediaFilePath: data.media_file_path,
+                mediaFileName: data.media_file_name,
+                isPending: false,
+              }
+            : msg
+        )
+      );
+    } catch (error) {
+      // Remove failed message
+      setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+      alert(error?.message || 'Failed to upload media');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveMedia = () => {
+    setSelectedMedia(null);
+    setMediaPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleTemplateSelect = (templateText) => {
+    if (templateText && activeChat) {
+      const messageText = templateText;
+      setInput("");
+
+      // Local optimistic update
+      const tempId = `temp-${Date.now()}`;
+      setChatMessages((prev) => [
+        ...prev,
+        { 
+          id: tempId,
+          message: messageText, 
+          sender_type: "company",
+          timestamp: new Date().toISOString()
+        },
+      ]);
+
+      // Send to backend
+      fetch(
+        `${API_BASE_URL}/sendMessage.php`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: AUTH_HEADERS,
+          body: JSON.stringify({
+            contact_id: activeChat,
+            message: messageText,
+          }),
+        }
+      ).catch(() => {
+        // Error handled silently
+      });
+    }
+  };
+
   // Handle Send
   const handleSend = async () => {
+    if (selectedMedia) {
+      handleMediaUpload();
+      return;
+    }
+
     if (!input.trim()) return;
 
     const messageText = input.trim();
@@ -157,7 +353,7 @@ export default function ChatWindow({
         }
       );
     } catch (e) {
-      console.error("Send failed:", e);
+      // Error handled silently
     }
   };
 
@@ -420,12 +616,20 @@ export default function ChatWindow({
                       : "7.5px 7.5px 7.5px 0",
                   }}
                 >
-                  <div
-                    className="text-[14.2px] leading-[19px] whitespace-pre-wrap"
-                    style={{ overflowWrap: "break-word" }}
-                  >
-                    {msg.message || msg.message_text}
-                  </div>
+                  {(msg.mediaType && msg.mediaType !== 'none') && (
+                    <MessageWithMedia
+                      message={msg}
+                      mediaCacheRef={mediaCacheRef}
+                    />
+                  )}
+                  {(msg.message || msg.message_text) && (
+                    <div
+                      className="text-[14.2px] leading-[19px] whitespace-pre-wrap"
+                      style={{ overflowWrap: "break-word" }}
+                    >
+                      {msg.message || msg.message_text}
+                    </div>
+                  )}
                   <div className="flex items-center justify-end mt-1 gap-1 ml-4">
                     <span className="text-[11px] text-[#8696a0] leading-[14px]">
                       {time}
@@ -440,8 +644,61 @@ export default function ChatWindow({
       </div>
 
       {/* Message input area */}
-      <div className="px-4 py-[10px] bg-[#202c33]">
+      <div className="px-4 py-[10px] bg-[#202c33] space-y-2">
+        {/* Media Preview */}
+        {selectedMedia && (
+          <div className="relative rounded-lg border border-[#8696a026] bg-[#2a3942] p-3">
+            <button
+              onClick={handleRemoveMedia}
+              className="absolute top-2 right-2 p-1.5 rounded-lg bg-[#0b141a]/80 text-[#8696a0] hover:text-white hover:bg-[#0b141a] transition-colors z-10"
+              title="Remove media"
+            >
+              <X size={16} />
+            </button>
+            <div className="flex items-center gap-3">
+              {mediaPreview ? (
+                <>
+                  {getMediaType(selectedMedia.type) === 'image' && (
+                    <img
+                      src={mediaPreview}
+                      alt="Preview"
+                      className="w-20 h-20 object-cover rounded-lg"
+                    />
+                  )}
+                  {getMediaType(selectedMedia.type) === 'video' && (
+                    <video
+                      src={mediaPreview}
+                      className="w-20 h-20 object-cover rounded-lg"
+                      muted
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="w-20 h-20 flex items-center justify-center rounded-lg bg-[#0b141a]">
+                  <Paperclip size={24} className="text-[#8696a0]" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">
+                  {selectedMedia.name}
+                </p>
+                <p className="text-xs text-[#8696a0]">
+                  {(selectedMedia.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-[10px]">
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={handleMediaSelect}
+            accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mpeg,.mov,.avi,.webm,.mp3,.wav,.ogg,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+            className="hidden"
+            disabled={!activeChat || uploading}
+          />
           <button 
             className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer"
             onMouseEnter={handleIconEnter}
@@ -450,30 +707,57 @@ export default function ChatWindow({
             <Smile size={24} />
           </button>
           <button 
-            className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!activeChat || uploading}
+            className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             onMouseEnter={handleIconEnter}
             onMouseLeave={handleIconLeave}
+            title="Attach media"
           >
             <Paperclip size={24} />
+          </button>
+          <button 
+            onClick={() => setShowTemplatePopup(true)}
+            disabled={!activeChat}
+            className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            onMouseEnter={handleIconEnter}
+            onMouseLeave={handleIconLeave}
+            title="Templates"
+          >
+            <FileText size={24} />
           </button>
           <div className="flex-1 bg-[#2a3942] rounded-[21px] min-h-[42px] flex items-center px-3">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Type a message"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (selectedMedia) {
+                    handleMediaUpload();
+                  } else if (input.trim()) {
+                    handleSend();
+                  }
+                }
+              }}
+              placeholder={selectedMedia ? "Add a caption (optional)..." : "Type a message"}
               className="flex-1 bg-transparent text-white text-[15px] placeholder-[#8696a0] border-none outline-none py-[9px] px-[12px] leading-[20px]"
+              disabled={uploading}
             />
           </div>
-          {input.trim() ? (
+          {(input.trim() || selectedMedia) ? (
             <button
               onClick={handleSend}
-              className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer"
+              disabled={uploading || (!selectedMedia && !input.trim())}
+              className="text-[#8696a0] hover:text-white transition-colors p-2 -m-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               onMouseEnter={handleIconEnter}
               onMouseLeave={handleIconLeave}
             >
-              <Send size={24} />
+              {uploading ? (
+                <div className="animate-spin inline-block size-5 border-2 border-current border-t-transparent rounded-full" />
+              ) : (
+                <Send size={24} />
+              )}
             </button>
           ) : (
             <button 
@@ -486,6 +770,13 @@ export default function ChatWindow({
           )}
         </div>
       </div>
+
+      <TemplatePopup
+        isOpen={showTemplatePopup}
+        onClose={() => setShowTemplatePopup(false)}
+        onSelectTemplate={handleTemplateSelect}
+        activeContactId={activeChat}
+      />
     </div>
   );
 }

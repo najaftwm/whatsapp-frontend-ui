@@ -136,7 +136,6 @@ export default function App() {
       try {
         // Method 1: Try to get user type from stored user (from login response)
         const storedUser = authClient.getUser()
-        console.log('Stored user from localStorage:', storedUser)
         let type = storedUser?.type || storedUser?.user_type || storedUser?.userType
         
         // Method 2: If not found, try to fetch from backend getCurrentUser endpoint
@@ -144,9 +143,8 @@ export default function App() {
           try {
             const user = await authClient.getCurrentUser()
             type = user?.type || user?.user_type || user?.userType
-            console.log('User type from getCurrentUser:', type)
           } catch {
-            console.log('getCurrentUser endpoint not available, trying alternative method')
+            // getCurrentUser endpoint not available, trying alternative method
           }
         }
         
@@ -164,22 +162,18 @@ export default function App() {
                 headers: AUTH_HEADERS,
               }
             )
-            const data = await resp.json()
-            console.log('getContacts response for user type detection:', data)
+            await resp.json()
             
             // This is a fallback - not ideal but works if backend doesn't return user type
             // Default to 'agent' - the backend will filter contacts correctly anyway
             type = 'agent'
           } catch (e) {
-            console.error('Failed to fetch contacts for user type detection:', e)
             type = 'agent'
           }
         }
         
-        console.log('Final determined user type:', type)
         setUserType(type || 'agent')
       } catch (error) {
-        console.error('Failed to fetch user type:', error)
         setUserType('agent') // Default to agent on error
       } finally {
         setLoadingUserType(false)
@@ -192,12 +186,10 @@ export default function App() {
   // Fetch contacts when authenticated (only for agents)
   useEffect(() => {
     if (!isAuthed || userType !== 'agent') {
-      console.log('App.jsx - Skipping contacts fetch:', { isAuthed, userType });
       return;
     }
     
     async function fetchContacts() {
-      console.log('App.jsx - Fetching contacts for agent...');
       try {
         const resp = await fetch(
           `${API_BASE_URL}/getContacts.php`,
@@ -208,13 +200,6 @@ export default function App() {
           }
         );
         const data = await resp.json();
-        console.log('App.jsx - getContacts response:', {
-          status: resp.status,
-          ok: data?.ok,
-          contactCount: data?.contacts?.length || 0,
-          allContactIds: data?.contacts?.map(c => ({ id: c.id, name: c.name })),
-          sampleContact: data?.contacts?.[0],
-        });
         
         if (data?.ok && data.contacts) {
           // Map contacts to match ChatList format
@@ -227,13 +212,10 @@ export default function App() {
             last_seen: c.last_seen || "",
             avatar: (c.name || c.phone_number || "?").slice(0, 2).toUpperCase(),
           }));
-          console.log('App.jsx - Mapped contacts:', mapped.length, 'contacts');
           setContacts(mapped);
-        } else {
-          console.error('App.jsx - getContacts failed:', data);
         }
       } catch (e) {
-        console.error("App.jsx - Failed to load contacts:", e);
+        // Error handled silently
       }
     }
     fetchContacts();

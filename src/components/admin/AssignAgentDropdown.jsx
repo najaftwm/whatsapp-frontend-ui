@@ -71,22 +71,18 @@ export default function AssignAgentDropdown({ contactId, onAssign, isOpen, onClo
 
   const handleAssign = async (agentId) => {
     if (!contactId || !agentId) {
-      console.error('AssignAgentDropdown: Missing IDs', { contactId, agentId })
       return
     }
     
-    console.log('AssignAgentDropdown: Starting assignment', { contactId, agentId })
     setIsAssigning(true)
     setMessage(null)
     try {
       await onAssign(contactId, agentId)
-      console.log('AssignAgentDropdown: Assignment successful')
       setMessage({ type: 'success', text: 'Agent assigned successfully' })
       setTimeout(() => {
         onClose()
       }, 1000)
     } catch (error) {
-      console.error('AssignAgentDropdown: Assignment failed', error)
       setMessage({
         type: 'error',
         text: error?.message || 'Failed to assign agent',
