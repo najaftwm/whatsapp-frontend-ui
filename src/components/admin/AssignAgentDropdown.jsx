@@ -17,9 +17,14 @@ export default function AssignAgentDropdown({ contactId, onAssign, isOpen, onClo
   useEffect(() => {
     if (!isOpen || !buttonRef?.current) {
       setMessage(null)
+      setIsAssigning(false) // Reset assigning state when dropdown closes
       return undefined
     }
 
+    // Reset state when dropdown opens
+    setIsAssigning(false)
+    setMessage(null)
+    
     // Refresh agents list when dropdown opens
     refreshAgents()
 
