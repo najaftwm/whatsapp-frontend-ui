@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { MinusCircle, AlertTriangle, X, Check, Search, Tag, ChevronDown, Plus, Settings } from 'lucide-react'
 import useContacts from './hooks/useContacts'
 import AssignAgentDropdown from './AssignAgentDropdown'
+import AddContactModal from './AddContactModal'
 import { API_BASE_URL, AUTH_HEADERS } from '../../config/api'
 
 function formatTimeLabel(raw) {
@@ -50,14 +51,17 @@ function formatTimeLabel(raw) {
   }
 }
 
-export default function ContactsSection() {
+export default function ContactsSection({ onNavigateToSection }) {
   const { contacts, loading, error, refresh } = useContacts()
   const [openContactId, setOpenContactId] = useState(null)
   const [deletingContactId, setDeletingContactId] = useState(null)
   const [confirmUnassign, setConfirmUnassign] = useState(null)
   const [notification, setNotification] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showAddContactModal, setShowAddContactModal] = useState(false)
+  const [highlightedContactId, setHighlightedContactId] = useState(null)
   const buttonRefs = useRef({})
+  const contactRowRefs = useRef({})
 
   const handleAssign = async (contactId, agentId) => {
     if (!contactId || !agentId) {
@@ -154,6 +158,46 @@ export default function ContactsSection() {
     }
   }
 
+  const handleContactCreated = async (newContact) => {
+    // Refresh contacts list to show the newly created contact
+    await refresh()
+    setNotification({
+      type: 'success',
+      message: `Contact "${newContact.name || newContact.phone_number}" created successfully!`,
+    })
+    setTimeout(() => setNotification(null), 3000)
+  }
+
+  const handleNavigateToContact = (contactId) => {
+    // Ensure we're on the contacts section
+    if (onNavigateToSection) {
+      onNavigateToSection('contacts')
+    }
+    
+    // Clear search to ensure contact is visible
+    setSearchQuery('')
+    
+    // Refresh contacts to ensure we have the latest data
+    refresh().then(() => {
+      // Wait a bit for the list to render, then scroll to the contact
+      setTimeout(() => {
+        const rowElement = contactRowRefs.current[contactId]
+        if (rowElement) {
+          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          // Highlight the contact briefly
+          setHighlightedContactId(contactId)
+          setTimeout(() => setHighlightedContactId(null), 3000)
+        }
+      }, 300)
+    })
+    
+    setNotification({
+      type: 'info',
+      message: 'Navigating to existing contact...',
+    })
+    setTimeout(() => setNotification(null), 2000)
+  }
+
   const contactList = useMemo(() => {
     let filtered = contacts.map((contact) => ({
       ...contact,
@@ -215,10 +259,14 @@ export default function ContactsSection() {
           <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg ${
             notification.type === 'success'
               ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+              : notification.type === 'info'
+              ? 'bg-blue-500/20 border-blue-500/30 text-blue-300'
               : 'bg-rose-500/20 border-rose-500/30 text-rose-300'
           }`}>
             {notification.type === 'success' ? (
               <Check className="text-emerald-400" size={20} />
+            ) : notification.type === 'info' ? (
+              <AlertTriangle className="text-blue-400" size={20} />
             ) : (
               <AlertTriangle className="text-rose-400" size={20} />
             )}
@@ -246,7 +294,10 @@ export default function ContactsSection() {
             <Tag size={16} className="inline mr-2" />
             Contact Tags
           </button>
-          <button className="rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-emerald-50 shadow-lg shadow-emerald-900/30 border border-emerald-800/30 transition-all duration-200 hover:bg-emerald-800 cursor-pointer flex items-center gap-2">
+          <button
+            onClick={() => setShowAddContactModal(true)}
+            className="rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-emerald-50 shadow-lg shadow-emerald-900/30 border border-emerald-800/30 transition-all duration-200 hover:bg-emerald-800 cursor-pointer flex items-center gap-2"
+          >
             <Plus size={16} />
             Add Contact
           </button>
@@ -321,8 +372,17 @@ export default function ContactsSection() {
                   }
                   const buttonRef = buttonRefs.current[contact.id]
 
+                  const isHighlighted = highlightedContactId === contact.id
                   return (
-                    <tr key={contact.id} className="transition-all duration-200 hover:bg-white/5">
+                    <tr
+                      key={contact.id}
+                      ref={(el) => {
+                        if (el) contactRowRefs.current[contact.id] = el
+                      }}
+                      className={`transition-all duration-200 hover:bg-white/5 ${
+                        isHighlighted ? 'bg-amber-900/20 border-l-4 border-amber-500' : ''
+                      }`}
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 text-white text-sm font-semibold">
@@ -390,6 +450,14 @@ export default function ContactsSection() {
           </div>
         )}
       </div>
+
+      {/* Add Contact Modal */}
+      <AddContactModal
+        isOpen={showAddContactModal}
+        onClose={() => setShowAddContactModal(false)}
+        onContactCreated={handleContactCreated}
+        onNavigateToContact={handleNavigateToContact}
+      />
     </div>
   )
 }

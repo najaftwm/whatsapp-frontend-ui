@@ -228,6 +228,11 @@ export default function ChatSection() {
   )
 
   const handleSend = async (templateText = null) => {
+    // Ignore event objects that might be passed from button clicks
+    if (templateText && typeof templateText === 'object' && templateText.preventDefault) {
+      templateText = null
+    }
+    
     const text = templateText || messageInput.trim()
     if (!activeContactId || !text) return
     
@@ -657,7 +662,14 @@ export default function ChatSection() {
                 disabled={!activeContactId || uploading}
               />
               <button
-                onClick={selectedMedia ? handleMediaUpload : handleSend}
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (selectedMedia) {
+                    handleMediaUpload()
+                  } else {
+                    handleSend()
+                  }
+                }}
                 disabled={uploading || !activeContactId || (!messageInput.trim() && !selectedMedia)}
                 className="px-5 py-3 rounded-xl bg-emerald-900 hover:bg-emerald-800 transition-all duration-200 font-medium text-emerald-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >

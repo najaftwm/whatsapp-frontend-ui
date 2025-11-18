@@ -333,7 +333,9 @@ export default function App() {
                   </div>
                 )}
                 {adminActiveSection === 'chat' && <AdminChatSection />}
-                {adminActiveSection === 'contacts' && <AdminContactsSection />}
+                {adminActiveSection === 'contacts' && (
+                  <AdminContactsSection onNavigateToSection={setAdminActiveSection} />
+                )}
                 {adminActiveSection === 'crm' && <AdminCRMSettingsSection />}
               </div>
             </div>
