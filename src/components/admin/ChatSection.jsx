@@ -30,8 +30,8 @@ function normalizeContacts(data) {
   })
 }
 
-function formatTime(raw) {
-  if (!raw) return ''
+function parseTimestamp(raw) {
+  if (!raw) return null
   const toDate = (value) => {
     const d = new Date(value)
     return Number.isNaN(d.getTime()) ? null : d
@@ -43,7 +43,7 @@ function formatTime(raw) {
     date = toDate(ms)
   } else if (typeof raw === 'string') {
     const trimmed = raw.trim()
-    if (!trimmed) return ''
+    if (!trimmed) return null
     if (/^\d+$/.test(trimmed)) {
       const numeric = Number(trimmed)
       date = toDate(trimmed.length === 10 ? numeric * 1000 : numeric)
@@ -54,6 +54,11 @@ function formatTime(raw) {
     }
   }
 
+  return date
+}
+
+function formatTime(raw) {
+  const date = parseTimestamp(raw)
   if (!date) return ''
 
   try {
@@ -62,6 +67,27 @@ function formatTime(raw) {
       minute: '2-digit',
       hour12: true,
     }).format(date)
+  } catch {
+    return ''
+  }
+}
+
+function formatFullTimestamp(raw) {
+  const date = parseTimestamp(raw)
+  if (!date) return ''
+
+  try {
+    const dateStr = date.toLocaleDateString('en-GB', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric'
+    })
+    const timeStr = date.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })
+    return `${dateStr} ${timeStr}`
   } catch {
     return ''
   }
@@ -228,7 +254,7 @@ export default function ChatSection() {
         body: JSON.stringify({ contact_id: activeContactId, message: text }),
       })
     } catch (error) {
-      // Error handled silently
+      console.error('Failed to send message', error)
     }
   }
 
@@ -331,6 +357,7 @@ export default function ChatSection() {
         )
       )
     } catch (error) {
+      console.error('Failed to upload media', error)
       // Remove failed message
       setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
       alert(error?.message || 'Failed to upload media')
@@ -367,34 +394,37 @@ export default function ChatSection() {
   }, [])
 
   return (
-    <div className="flex h-full min-h-0 bg-slate-900">
-      <aside className="flex w-80 min-h-0 flex-col border-r border-slate-700 bg-slate-800">
-        <div className="flex items-center border-b border-slate-700 px-6 h-[72px]">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              type="text"
-              placeholder="Search contacts…"
-              className="w-full rounded-xl border border-slate-600 bg-slate-700 py-2 pl-10 pr-3 text-sm text-slate-100 shadow-sm placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-            />
-          </div>
+    <div className="flex h-full min-h-0 bg-[#0d1117] text-white">
+      {/* Left Sidebar - Chat List */}
+      <aside className="w-64 backdrop-blur-md bg-[#0f141a]/80 border-r border-white/10 p-5 flex flex-col">
+        <div className="text-lg font-semibold mb-6">Chats</div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={18} />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            type="text"
+            placeholder="Search..."
+            className="w-full px-3 py-2 pl-10 rounded-lg bg-white/10 border border-white/10 placeholder-white/30 focus:bg-white/20 outline-none transition"
+          />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+        {/* Contact List */}
+        <div className="mt-5 space-y-2 overflow-y-auto flex-1">
           {contactsLoading ? (
-            <div className="flex items-center justify-center rounded-xl bg-slate-700 px-4 py-6">
-              <div className="animate-spin inline-block size-6 border-[3px] border-current border-t-transparent text-emerald-500 rounded-full" role="status" aria-label="loading">
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin inline-block size-6 border-[3px] border-current border-t-transparent text-white/40 rounded-full" role="status" aria-label="loading">
                 <span className="sr-only">Loading...</span>
               </div>
             </div>
           ) : contactsError ? (
-            <div className="rounded-xl bg-rose-900/30 px-4 py-4 text-sm text-rose-400 shadow-sm border border-rose-800/50">
+            <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-4 text-sm text-red-400">
               {contactsError}
             </div>
           ) : filteredContacts.length === 0 ? (
-            <div className="rounded-xl bg-slate-700 px-4 py-6 text-center text-sm text-slate-300 shadow-sm">
+            <div className="rounded-lg bg-white/5 px-4 py-6 text-center text-sm text-white/50">
               No contacts found
             </div>
           ) : (
@@ -402,126 +432,111 @@ export default function ChatSection() {
               const isActive = contact.id === activeContactId
               const initials = contact.avatar?.slice(0, 2).toUpperCase() || '??'
               return (
-                <button
+                <div
                   key={contact.id}
                   onClick={() => setActiveContactId(contact.id)}
-                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition cursor-pointer ${
-                    isActive 
-                      ? 'bg-slate-700 shadow ring-1 ring-emerald-500/30' 
-                      : 'bg-slate-700/50 hover:bg-slate-700'
+                  className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition ${
+                    isActive
+                      ? 'bg-white/10 border border-white/10'
+                      : 'hover:bg-white/10'
                   }`}
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-400 to-emerald-600 text-white text-sm font-semibold">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-sm font-semibold shrink-0">
                     {initials}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-col gap-1">
-                      <p className="truncate text-sm font-semibold text-slate-100">{contact.name}</p>
-                      {contact.assignedAgent ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold border border-emerald-500/30 w-fit">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          {contact.assignedAgent}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-600/50 text-slate-400 text-[10px] font-medium border border-slate-500/50 w-fit">
-                          <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
-                          Unassigned
-                        </span>
-                      )}
+                    <div className="text-sm font-medium">{contact.name}</div>
+                    {contact.assignedAgent && (
+                      <div className="text-xs text-emerald-400 font-medium flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        {contact.assignedAgent}
+                      </div>
+                    )}
+                    <div className="text-xs opacity-50 truncate">
+                      {contact.lastMessage || (contact.lastMessageTime ? formatFullTimestamp(contact.lastMessageTime) || 'No recent activity' : 'No recent activity')}
                     </div>
-                    <p className="truncate text-xs text-slate-400 mt-0.5">
-                      {contact.lastMessage || 'No recent activity'}
-                    </p>
                   </div>
-                  <span className="text-[11px] font-medium text-slate-500 shrink-0">
-                    {formatTime(contact.lastMessageTime)}
-                  </span>
-                </button>
+                </div>
               )
             })
           )}
         </div>
       </aside>
 
-      <section className="flex min-h-0 flex-1 flex-col bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Middle Chat Window */}
+      <main className="flex-1 flex flex-col">
         {!activeContact ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
+          <div className="flex flex-1 items-center justify-center text-sm text-white/50">
             Select a contact to view messages
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-4 border-b border-slate-700 bg-slate-800/50 px-6 h-[72px]">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-400 to-emerald-600 text-white text-sm font-semibold shadow-sm">
-                  {activeContact.avatar?.slice(0, 2).toUpperCase() || '??'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold text-slate-100">{activeContact.name}</p>
-                  <p className="truncate text-xs text-slate-400">
-                    Last active {formatTime(activeContact.lastMessageTime) || 'Recently'}
-                  </p>
+            {/* Chat Header */}
+            <header className="px-6 py-4 border-b border-white/10 flex items-center gap-3 backdrop-blur-md bg-[#0f141a]/70">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-sm font-semibold shrink-0">
+                {activeContact.avatar?.slice(0, 2).toUpperCase() || '??'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-base font-medium">{activeContact.name}</div>
+                <div className="text-xs opacity-50">
+                  Last active {formatTime(activeContact.lastMessageTime) || 'Recently'}
                 </div>
               </div>
-              <div className="shrink-0">
-                {activeContact.assignedAgent ? (
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Assigned to</span>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30 shadow-sm">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                      {activeContact.assignedAgent}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Assigned to</span>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-400 text-xs font-medium border border-slate-600 shadow-sm">
-                      <span className="h-2 w-2 rounded-full bg-slate-500"></span>
-                      Unassigned
-                    </span>
-                  </div>
-                )}
+              <div className="shrink-0 flex items-center gap-2">
+                <span className="text-sm italic text-white/70 font-medium">Agent :</span>
+                <div className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                  activeContact.assignedAgent 
+                    ? 'bg-emerald-900 text-emerald-50' 
+                    : 'bg-gray-700/50 text-gray-400'
+                }`}>
+                  {activeContact.assignedAgent || 'Unassigned'}
+                </div>
               </div>
-            </div>
+            </header>
 
-            <div 
-              className="flex-1 overflow-y-auto px-6 py-6 relative"
-              style={{
-                background: "url('https://raw.githubusercontent.com/jazimabbas/whatsapp-web-ui/refs/heads/master/public/assets/images/bg-chat-room.png')",
-                backgroundSize: "430px 780px",
-                backgroundRepeat: "repeat",
-              }}
-            >
-              <div className="relative z-10 h-full">
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
               {messagesLoading ? (
                 <div className="flex h-full items-center justify-center">
-                  <div className="animate-spin inline-block size-6 border-[3px] border-current border-t-transparent text-emerald-500 rounded-full" role="status" aria-label="loading">
+                  <div className="animate-spin inline-block size-6 border-[3px] border-current border-t-transparent text-white/40 rounded-full" role="status" aria-label="loading">
                     <span className="sr-only">Loading...</span>
                   </div>
                 </div>
               ) : messagesError ? (
-                <div className="flex h-full items-center justify-center text-sm text-rose-400">
+                <div className="flex h-full items-center justify-center text-sm text-red-400">
                   {messagesError}
                 </div>
               ) : messages.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                <div className="flex h-full items-center justify-center text-sm text-white/50">
                   No messages yet for this contact
                 </div>
               ) : (
-                <div className="mx-auto flex h-full w-full max-w-2xl flex-col gap-3">
-                  {messages.map((message) => {
+                <>
+                  {/* Timestamp */}
+                  {messages.length > 0 && (
+                    <div className="text-center text-xs opacity-40">
+                      Today • {formatTime(messages[0]?.timestamp) || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+                  {messages.map((message, index) => {
                     const isCompany = (message.senderType || 'customer') === 'company'
                     const hasMedia = message.mediaType && message.mediaType !== 'none'
                     
                     return (
                       <div
                         key={message.id}
-                        className={`flex ${isCompany ? 'justify-end' : 'justify-start'}`}
+                        className={isCompany ? 'flex justify-end' : 'flex items-start gap-3'}
                       >
+                        {!isCompany && (
+                          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-xs font-semibold shrink-0">
+                            {activeContact.avatar?.slice(0, 1).toUpperCase() || '?'}
+                          </div>
+                        )}
                         <div
-                          className={`max-w-[70%] rounded-3xl px-4 py-3 text-sm shadow ${
+                          className={`px-4 py-3 rounded-xl max-w-lg ${
                             isCompany
-                              ? 'rounded-tr-sm bg-emerald-500 text-white shadow-emerald-500/25'
-                              : 'rounded-tl-sm bg-slate-700 text-slate-100 shadow-slate-900/50 border border-slate-600'
+                              ? 'bg-emerald-900 text-emerald-50'
+                              : 'bg-white/10 border border-white/10'
                           }`}
                         >
                           {hasMedia && (
@@ -531,13 +546,15 @@ export default function ChatSection() {
                             />
                           )}
                           {message.message && (
-                            <p className="whitespace-pre-wrap wrap-break-word">{message.message}</p>
+                            <p className="whitespace-pre-wrap break-words">{message.message}</p>
                           )}
                           {message.timestamp && (
-                            <p className={`mt-2 text-[10px] font-medium text-right ${
-                              isCompany ? 'opacity-70' : 'text-slate-400'
-                            }`}>
-                              {formatTime(message.timestamp)}
+                            <p className="mt-1 text-[10px] opacity-60 text-right">
+                              {new Date(message.timestamp).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                              }) + ' ' + formatTime(message.timestamp)}
                             </p>
                           )}
                         </div>
@@ -545,18 +562,17 @@ export default function ChatSection() {
                     )
                   })}
                   <div ref={messageEndRef} />
-                </div>
+                </>
               )}
-              </div>
             </div>
 
-            <div className="border-t border-slate-700 bg-slate-800/30 backdrop-blur-sm px-6 py-4 space-y-3">
-              {/* Media Preview */}
-              {selectedMedia && (
-                <div className="relative rounded-xl border border-slate-600 bg-slate-700/50 p-3">
+            {/* Media Preview */}
+            {selectedMedia && (
+              <div className="px-6 py-3 border-t border-white/10 backdrop-blur-md bg-[#0f141a]/80">
+                <div className="relative rounded-xl border border-white/10 bg-white/5 p-3">
                   <button
                     onClick={handleRemoveMedia}
-                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors z-10"
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 transition-colors z-10"
                     title="Remove media"
                   >
                     <X size={16} />
@@ -580,85 +596,81 @@ export default function ChatSection() {
                         )}
                       </>
                     ) : (
-                      <div className="w-20 h-20 flex items-center justify-center rounded-lg bg-slate-600">
-                        <Paperclip size={24} className="text-slate-400" />
+                      <div className="w-20 h-20 flex items-center justify-center rounded-lg bg-white/10">
+                        <Paperclip size={24} className="text-white/40" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-100 truncate">
+                      <p className="text-sm font-medium text-white truncate">
                         {selectedMedia.name}
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs opacity-50">
                         {(selectedMedia.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
                   </div>
                 </div>
-              )}
-
-              {/* Input Area */}
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-600/50 bg-slate-800/40 backdrop-blur-sm px-4 py-2.5 shadow-sm overflow-hidden">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleMediaSelect}
-                  accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mpeg,.mov,.avi,.webm,.mp3,.wav,.ogg,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-                  className="hidden"
-                  disabled={!activeContactId || uploading}
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={!activeContactId || uploading}
-                  className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-slate-400 disabled:hover:bg-transparent"
-                  title="Attach media"
-                >
-                  <Paperclip size={20} />
-                </button>
-                <button
-                  onClick={() => setShowTemplatePopup(true)}
-                  disabled={!activeContactId}
-                  className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-slate-400 disabled:hover:bg-transparent"
-                  title="Templates"
-                >
-                  <FileText size={20} />
-                </button>
-                <input
-                  value={messageInput}
-                  onChange={(event) => setMessageInput(event.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && activeContactId) {
-                      if (selectedMedia) {
-                        handleMediaUpload()
-                      } else if (messageInput.trim()) {
-                        handleSend()
-                      }
-                    }
-                  }}
-                  type="text"
-                  placeholder={selectedMedia ? "Add a caption (optional)..." : "Type a message…"}
-                  className="flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
-                  disabled={!activeContactId || uploading}
-                />
-                <button
-                  onClick={selectedMedia ? handleMediaUpload : handleSend}
-                  disabled={uploading || !activeContactId || (!selectedMedia && !messageInput.trim())}
-                  className={`rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-500 ease-out hover:bg-emerald-600 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
-                    (messageInput.trim() || selectedMedia) && activeContactId
-                      ? 'translate-x-0 opacity-100'
-                      : 'translate-x-[200%] opacity-0 pointer-events-none'
-                  }`}
-                >
-                  {uploading ? (
-                    <div className="animate-spin inline-block size-4 border-2 border-current border-t-transparent rounded-full" />
-                  ) : (
-                    'Send'
-                  )}
-                </button>
               </div>
-            </div>
+            )}
+
+            {/* Chat Input */}
+            <footer className="p-5 border-t border-white/10 backdrop-blur-md bg-[#0f141a]/80 flex items-center gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleMediaSelect}
+                accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mpeg,.mov,.avi,.webm,.mp3,.wav,.ogg,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                className="hidden"
+                disabled={!activeContactId || uploading}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!activeContactId || uploading}
+                className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Attach media"
+              >
+                <Paperclip size={20} />
+              </button>
+              <button
+                onClick={() => setShowTemplatePopup(true)}
+                disabled={!activeContactId}
+                className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Templates"
+              >
+                <FileText size={20} />
+              </button>
+              <input
+                value={messageInput}
+                onChange={(event) => setMessageInput(event.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && activeContactId) {
+                    if (selectedMedia) {
+                      handleMediaUpload()
+                    } else if (messageInput.trim()) {
+                      handleSend()
+                    }
+                  }
+                }}
+                type="text"
+                placeholder={selectedMedia ? "Add a caption (optional)..." : "Type a message…"}
+                className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/10 placeholder-white/40 focus:bg-white/20 outline-none transition"
+                disabled={!activeContactId || uploading}
+              />
+              <button
+                onClick={selectedMedia ? handleMediaUpload : handleSend}
+                disabled={uploading || !activeContactId || (!messageInput.trim() && !selectedMedia)}
+                className="px-5 py-3 rounded-xl bg-emerald-900 hover:bg-emerald-800 transition-all duration-200 font-medium text-emerald-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {uploading ? (
+                  <div className="animate-spin inline-block size-4 border-2 border-current border-t-transparent rounded-full" />
+                ) : (
+                  'Send'
+                )}
+              </button>
+            </footer>
           </>
         )}
-      </section>
+      </main>
       
       <TemplatePopup
         isOpen={showTemplatePopup}

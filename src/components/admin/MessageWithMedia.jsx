@@ -36,6 +36,7 @@ export default function MessageWithMedia({ message, mediaCacheRef }) {
         })
 
         if (!res.ok) {
+          console.error('Failed to fetch media:', res.status)
           setLoading(false)
           return
         }
@@ -48,7 +49,7 @@ export default function MessageWithMedia({ message, mediaCacheRef }) {
         
         setMediaUrl(objectUrl)
       } catch (error) {
-        // Error handled silently
+        console.error('Error fetching media:', error)
       } finally {
         setLoading(false)
       }

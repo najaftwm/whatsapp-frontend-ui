@@ -136,6 +136,7 @@ export default function App() {
       try {
         // Method 1: Try to get user type from stored user (from login response)
         const storedUser = authClient.getUser()
+        console.log('Stored user from localStorage:', storedUser)
         let type = storedUser?.type || storedUser?.user_type || storedUser?.userType
         
         // Method 2: If not found, try to fetch from backend getCurrentUser endpoint
@@ -143,8 +144,9 @@ export default function App() {
           try {
             const user = await authClient.getCurrentUser()
             type = user?.type || user?.user_type || user?.userType
+            console.log('User type from getCurrentUser:', type)
           } catch {
-            // getCurrentUser endpoint not available, trying alternative method
+            console.log('getCurrentUser endpoint not available, trying alternative method')
           }
         }
         
@@ -162,18 +164,22 @@ export default function App() {
                 headers: AUTH_HEADERS,
               }
             )
-            await resp.json()
+            const data = await resp.json()
+            console.log('getContacts response for user type detection:', data)
             
             // This is a fallback - not ideal but works if backend doesn't return user type
             // Default to 'agent' - the backend will filter contacts correctly anyway
             type = 'agent'
           } catch (e) {
+            console.error('Failed to fetch contacts for user type detection:', e)
             type = 'agent'
           }
         }
         
+        console.log('Final determined user type:', type)
         setUserType(type || 'agent')
       } catch (error) {
+        console.error('Failed to fetch user type:', error)
         setUserType('agent') // Default to agent on error
       } finally {
         setLoadingUserType(false)
@@ -186,10 +192,12 @@ export default function App() {
   // Fetch contacts when authenticated (only for agents)
   useEffect(() => {
     if (!isAuthed || userType !== 'agent') {
+      console.log('App.jsx - Skipping contacts fetch:', { isAuthed, userType });
       return;
     }
     
     async function fetchContacts() {
+      console.log('App.jsx - Fetching contacts for agent...');
       try {
         const resp = await fetch(
           `${API_BASE_URL}/getContacts.php`,
@@ -200,6 +208,13 @@ export default function App() {
           }
         );
         const data = await resp.json();
+        console.log('App.jsx - getContacts response:', {
+          status: resp.status,
+          ok: data?.ok,
+          contactCount: data?.contacts?.length || 0,
+          allContactIds: data?.contacts?.map(c => ({ id: c.id, name: c.name })),
+          sampleContact: data?.contacts?.[0],
+        });
         
         if (data?.ok && data.contacts) {
           // Map contacts to match ChatList format
@@ -212,10 +227,13 @@ export default function App() {
             last_seen: c.last_seen || "",
             avatar: (c.name || c.phone_number || "?").slice(0, 2).toUpperCase(),
           }));
+          console.log('App.jsx - Mapped contacts:', mapped.length, 'contacts');
           setContacts(mapped);
+        } else {
+          console.error('App.jsx - getContacts failed:', data);
         }
       } catch (e) {
-        // Error handled silently
+        console.error("App.jsx - Failed to load contacts:", e);
       }
     }
     fetchContacts();
@@ -291,12 +309,29 @@ export default function App() {
   // Render Admin Panel if user is admin
   if (userType === 'admin') {
     return (
-      <div className="flex h-screen bg-slate-900 text-slate-100">
+      <div className="flex h-screen bg-[#0d1117] text-white overflow-hidden">
         <AdminSidebar active={adminActiveSection} setActive={setAdminActiveSection} onLogout={handleLogout} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <main className="flex-1 overflow-hidden bg-slate-900">
+          <main className="flex-1 overflow-hidden">
             <div className="h-full w-full flex flex-col">
               <div className="flex-1 min-h-0">
+                {adminActiveSection === 'dashboard' && (
+                  <div className="flex h-full flex-col bg-[#0d1117]">
+                    <header className="border-b border-white/10 px-8 py-6 bg-[#0f141a]/80 backdrop-blur-md">
+                      <h2 className="text-xl font-semibold text-white">Dashboard</h2>
+                      <p className="text-sm text-white/60">Overview of your workspace activity and metrics.</p>
+                    </header>
+                    <div className="flex flex-1 items-center justify-center px-6">
+                      <div className="text-center max-w-md">
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-900/40 border border-emerald-800/30 shadow-lg shadow-emerald-900/30">
+                          <BarChart3 className="text-emerald-400" size={32} />
+                        </div>
+                        <p className="text-lg font-semibold mb-2 text-white">Welcome to Dashboard</p>
+                        <p className="text-sm text-white/60">Select a section from the sidebar to get started</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {adminActiveSection === 'chat' && <AdminChatSection />}
                 {adminActiveSection === 'contacts' && <AdminContactsSection />}
                 {adminActiveSection === 'crm' && <AdminCRMSettingsSection />}

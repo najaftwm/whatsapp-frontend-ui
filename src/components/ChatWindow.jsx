@@ -63,6 +63,7 @@ export default function ChatWindow({
           setChatMessages(mapped);
         }
       } catch (e) {
+        console.error("Failed to load messages:", e);
         setChatMessages([]);
       }
     }
@@ -261,6 +262,7 @@ export default function ChatWindow({
         )
       );
     } catch (error) {
+      console.error('Failed to upload media', error);
       // Remove failed message
       setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
       alert(error?.message || 'Failed to upload media');
@@ -309,8 +311,8 @@ export default function ChatWindow({
             message: messageText,
           }),
         }
-      ).catch(() => {
-        // Error handled silently
+      ).catch((e) => {
+        console.error("Send failed:", e);
       });
     }
   };
@@ -353,7 +355,7 @@ export default function ChatWindow({
         }
       );
     } catch (e) {
-      // Error handled silently
+      console.error("Send failed:", e);
     }
   };
 

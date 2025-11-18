@@ -8,9 +8,9 @@ export const pusher = new Pusher("573a0a8b82064304ef42", {
 
 // Optional: log connection status in console
 pusher.connection.bind("connected", () => {
-  // Pusher connected successfully
+  console.log("✅ Pusher connected");
 });
 
-pusher.connection.bind("error", () => {
-  // Pusher connection error - handled silently
+pusher.connection.bind("error", (err) => {
+  console.error("❌ Pusher error:", err);
 });

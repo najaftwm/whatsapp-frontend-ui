@@ -58,6 +58,8 @@ export default function useContacts() {
         throw new Error(data?.error || 'Failed to load contacts')
       }
       const mapped = normalizeContacts(data.contacts)
+      console.log('Contacts loaded:', mapped.length, 'contacts')
+      console.log('Sample contact with assignment:', mapped.find(c => c.assignedAgent || c.assigned_agent || c.agent_name))
       setContacts(mapped)
     } catch (err) {
       setError(err?.message || 'Failed to load contacts')
