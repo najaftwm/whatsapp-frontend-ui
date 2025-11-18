@@ -4,7 +4,7 @@ import { API_BASE_URL, AUTH_HEADERS } from '../../config/api'
 
 export default function AddContactModal({ isOpen, onClose, onContactCreated, onNavigateToContact }) {
   const [name, setName] = useState('')
-  const [phoneNumber, setPhoneNumber] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('+91')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [existingContact, setExistingContact] = useState(null)
@@ -14,7 +14,7 @@ export default function AddContactModal({ isOpen, onClose, onContactCreated, onN
   useEffect(() => {
     if (isOpen) {
       setName('')
-      setPhoneNumber('')
+      setPhoneNumber('+91')
       setError('')
       setExistingContact(null)
     }
@@ -47,7 +47,7 @@ export default function AddContactModal({ isOpen, onClose, onContactCreated, onN
   const handleClose = () => {
     if (!loading) {
       setName('')
-      setPhoneNumber('')
+      setPhoneNumber('+91')
       setError('')
       setExistingContact(null)
       onClose()
@@ -64,17 +64,51 @@ export default function AddContactModal({ isOpen, onClose, onContactCreated, onN
   const validatePhoneNumber = (phone) => {
     // Remove any spaces or dashes for validation
     const cleaned = phone.replace(/[\s-]/g, '')
-    // Check if it matches the pattern: optional +, then 10-15 digits
-    return /^\+?[0-9]{10,15}$/.test(cleaned)
+    // Must start with +91 and have exactly 10 digits after (total 13 characters)
+    return /^\+91[0-9]{10}$/.test(cleaned)
   }
 
   const handlePhoneChange = (e) => {
     const value = e.target.value
-    // Allow digits, +, spaces, and dashes for better UX
-    if (/^[\d\s+-]*$/.test(value)) {
-      setPhoneNumber(value)
-      // Clear error when user starts typing
-      if (error) setError('')
+    
+    // Always ensure it starts with +91
+    if (!value.startsWith('+91')) {
+      // If user tries to delete +91, prevent it
+      if (value.length < 3) {
+        setPhoneNumber('+91')
+        return
+      }
+      // If user pastes something without +91, add it
+      const digitsOnly = value.replace(/\D/g, '')
+      if (digitsOnly.length > 0) {
+        setPhoneNumber('+91' + digitsOnly.slice(0, 10))
+        if (error) setError('')
+        return
+      }
+      setPhoneNumber('+91')
+      return
+    }
+    
+    // Extract only digits after +91 (max 10 digits)
+    const afterPlus91 = value.slice(3).replace(/\D/g, '').slice(0, 10)
+    setPhoneNumber('+91' + afterPlus91)
+    
+    // Clear error when user starts typing
+    if (error) setError('')
+  }
+
+  const handlePhoneKeyDown = (e) => {
+    // Prevent deletion of +91 prefix
+    const input = e.target
+    const cursorPosition = input.selectionStart
+    
+    // If cursor is before or within +91, prevent backspace/delete
+    if (cursorPosition <= 3 && (e.key === 'Backspace' || e.key === 'Delete')) {
+      e.preventDefault()
+      // Move cursor to after +91
+      setTimeout(() => {
+        input.setSelectionRange(3, 3)
+      }, 0)
     }
   }
 
@@ -86,13 +120,13 @@ export default function AddContactModal({ isOpen, onClose, onContactCreated, onN
     const cleanedPhone = phoneNumber.replace(/[\s-]/g, '')
 
     // Validate phone number
-    if (!cleanedPhone.trim()) {
-      setError('Phone number is required')
+    if (!cleanedPhone.trim() || cleanedPhone === '+91') {
+      setError('Please enter a 10-digit phone number after +91')
       return
     }
 
     if (!validatePhoneNumber(cleanedPhone)) {
-      setError('Invalid phone number format. Expected format: +919876543210 or 9876543210 (10-15 digits)')
+      setError('Invalid phone number format. Please enter exactly 10 digits after +91 (e.g., +919876543210)')
       return
     }
 
@@ -244,13 +278,20 @@ export default function AddContactModal({ isOpen, onClose, onContactCreated, onN
               type="text"
               value={phoneNumber}
               onChange={handlePhoneChange}
-              placeholder="+919876543210 or 9876543210"
+              onKeyDown={handlePhoneKeyDown}
+              onFocus={(e) => {
+                // Move cursor to end if clicking on +91
+                if (e.target.selectionStart <= 3) {
+                  e.target.setSelectionRange(3, 3)
+                }
+              }}
+              placeholder="+91XXXXXXXXXX"
               className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-white/40 focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all"
               disabled={loading}
               required
             />
             <p className="mt-1.5 text-xs text-white/50">
-              Format: +919876543210 or 9876543210 (10-15 digits)
+              Format: +91XXXXXXXXXX (10 digits after +91)
             </p>
           </div>
 
@@ -259,7 +300,7 @@ export default function AddContactModal({ isOpen, onClose, onContactCreated, onN
             <div className="flex gap-3 pt-2">
               <button
                 type="submit"
-                disabled={loading || !phoneNumber.trim()}
+                disabled={loading || !phoneNumber.trim() || phoneNumber === '+91' || phoneNumber.length < 13}
                 className="flex-1 px-4 py-3 rounded-xl bg-emerald-900 text-emerald-50 font-semibold hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 border border-emerald-800/30"
               >
                 {loading ? (
