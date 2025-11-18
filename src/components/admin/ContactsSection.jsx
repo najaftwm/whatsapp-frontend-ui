@@ -397,7 +397,7 @@ export default function ContactsSection({ onNavigateToSection }) {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-white/70">{contact.phoneLabel}</td>
-                      <td className="px-6 py-4 text-sm text-white/50">{contact.lastActiveLabel}</td>
+                      <td className="px-6 py-4 text-sm text-white/50">—</td>
                       <td className="px-6 py-4 text-sm text-white/70">
                         {contact.assignedAgent ? (
                           <span className="inline-flex items-center rounded-lg bg-emerald-900/40 px-3 py-1 text-xs font-semibold text-emerald-50 border border-emerald-800/30">

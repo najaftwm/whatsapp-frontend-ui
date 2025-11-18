@@ -360,7 +360,7 @@ export default function App() {
         {/* Right column: Chat window */}
         <div className="w-[70%]">
           <div className="h-screen max-h-screen wa-wallpaper">
-            {activeChatId ? (
+            {activeChatId && activeChat ? (
               <ChatWindow
                 activeChat={activeChatId}
                 contact={activeChat}
@@ -406,7 +406,7 @@ export default function App() {
 
         {mobileOpen && (
           <div className="fixed inset-0 z-40 bg-(--color-chatBg) wa-wallpaper">
-            {activeChatId ? (
+            {activeChatId && activeChat ? (
               <ChatWindow
                 activeChat={activeChatId}
                 contact={activeChat}

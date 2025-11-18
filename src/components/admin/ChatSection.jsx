@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, FileText, Paperclip, X } from 'lucide-react'
+import { Search, FileText, Paperclip, X, MessageCircle } from 'lucide-react'
 import { API_BASE_URL, AUTH_HEADERS } from '../../config/api'
 import TemplatePopup from './TemplatePopup'
 import MessageWithMedia from './MessageWithMedia'
@@ -7,17 +7,39 @@ import MessageWithMedia from './MessageWithMedia'
 const API_BASE = API_BASE_URL
 const AUTH_HEADER = AUTH_HEADERS
 
-function normalizeContacts(data) {
+function normalizeContacts(data, existingContacts = []) {
   if (!Array.isArray(data)) return []
+  // Create a map of existing contacts by ID to preserve lastMessageTime
+  const existingMap = new Map()
+  existingContacts.forEach(contact => {
+    if (contact.id && contact.lastMessageTime) {
+      existingMap.set(String(contact.id), contact.lastMessageTime)
+    }
+  })
+  
   return data.map((item) => {
     const name = item.name || item.phone_number || 'Unknown'
+    const contactId = String(item.id ?? item.contact_id ?? item.phone_number ?? name)
+    
+    // Get last_message_time from server, or preserve existing if server doesn't have it
+    let lastMessageTime = item.last_message_time ?? item.lastMessageTime ?? item.time ?? null
+    // Only use last_seen if we don't have last_message_time and it's not empty
+    if (!lastMessageTime && item.last_seen) {
+      // Don't use last_seen as it's not the message time
+      lastMessageTime = null
+    }
+    // If server doesn't return a valid lastMessageTime, preserve existing one
+    if (!lastMessageTime && existingMap.has(contactId)) {
+      lastMessageTime = existingMap.get(contactId)
+    }
+    
     return {
       ...item,
-      id: item.id ?? item.contact_id ?? item.phone_number ?? name,
+      id: contactId,
       name,
       lastMessage: item.lastMessage ?? item.last_message ?? '',
-      lastMessageTime:
-        item.lastMessageTime ?? item.last_message_time ?? item.last_seen ?? item.time ?? '',
+      // Only set lastMessageTime if we have a valid value, otherwise null (not empty string)
+      lastMessageTime: lastMessageTime || null,
       avatar: item.avatar || name.slice(0, 2).toUpperCase(),
       assignedAgent:
         item.assigned_agent || 
@@ -132,11 +154,11 @@ export default function ChatSection() {
         }
 
         if (aborted) return
-        const mapped = normalizeContacts(data.contacts)
-        setContacts(mapped)
-        if (mapped.length) {
-          setActiveContactId(mapped[0].id)
-        }
+        setContacts((prev) => {
+          const mapped = normalizeContacts(data.contacts, prev)
+          // Don't auto-select first contact - let user select manually
+          return mapped
+        })
       } catch (error) {
         if (!aborted) setContactsError(error?.message || 'Failed to load contacts')
       } finally {
@@ -227,6 +249,20 @@ export default function ChatSection() {
     [contacts, activeContactId]
   )
 
+  // Get the last message time from messages if available, otherwise use contact's lastMessageTime
+  const lastMessageTime = useMemo(() => {
+    if (messages.length > 0) {
+      // Get the most recent message timestamp
+      const sortedMessages = [...messages].sort((a, b) => {
+        const timeA = new Date(a.timestamp || 0).getTime()
+        const timeB = new Date(b.timestamp || 0).getTime()
+        return timeB - timeA
+      })
+      return sortedMessages[0]?.timestamp || activeContact?.lastMessageTime || ''
+    }
+    return activeContact?.lastMessageTime || ''
+  }, [messages, activeContact])
+
   const handleSend = async (templateText = null) => {
     // Ignore event objects that might be passed from button clicks
     if (templateText && typeof templateText === 'object' && templateText.preventDefault) {
@@ -241,15 +277,29 @@ export default function ChatSection() {
     }
 
     const tempId = `temp-${Date.now()}`
+    const now = new Date().toISOString()
     setMessages((prev) => [
       ...prev,
       {
         id: tempId,
         message: text,
         senderType: 'company',
-        timestamp: new Date().toISOString(),
+        timestamp: now,
       },
     ])
+
+    // Update the contact's lastMessageTime in the contacts list optimistically
+    setContacts((prev) =>
+      prev.map((contact) =>
+        contact.id === activeContactId
+          ? {
+              ...contact,
+              lastMessage: text,
+              lastMessageTime: now,
+            }
+          : contact
+      )
+    )
 
     try {
       await fetch(`${API_BASE}/sendMessage.php`, {
@@ -258,6 +308,38 @@ export default function ChatSection() {
         headers: AUTH_HEADER,
         body: JSON.stringify({ contact_id: activeContactId, message: text }),
       })
+      
+      // Refresh contacts to get updated last_message_time from server
+      // But preserve the optimistic update we just made
+      try {
+        const res = await fetch(`${API_BASE}/getContacts.php`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: AUTH_HEADER,
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data?.ok === true && Array.isArray(data.contacts)) {
+          setContacts((prev) => {
+            const mapped = normalizeContacts(data.contacts, prev)
+            // Ensure the contact we just sent to still has the correct lastMessageTime
+            return mapped.map(contact => {
+              if (contact.id === activeContactId) {
+                // If server returned a valid last_message_time, use it, otherwise keep our optimistic update
+                const serverTime = contact.lastMessageTime
+                const optimisticTime = prev.find(c => c.id === activeContactId)?.lastMessageTime
+                return {
+                  ...contact,
+                  lastMessage: contact.lastMessage || text,
+                  lastMessageTime: serverTime || optimisticTime || contact.lastMessageTime
+                }
+              }
+              return contact
+            })
+          })
+        }
+      } catch (refreshError) {
+        console.error('Failed to refresh contacts', refreshError)
+      }
     } catch (error) {
       console.error('Failed to send message', error)
     }
@@ -347,6 +429,7 @@ export default function ChatSection() {
       }
 
       // Update message with server response
+      const now = new Date().toISOString()
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === tempId
@@ -357,10 +440,56 @@ export default function ChatSection() {
                 mediaFilePath: data.media_file_path,
                 mediaFileName: data.media_file_name,
                 isPending: false,
+                timestamp: now,
               }
             : msg
         )
       )
+
+      // Update the contact's lastMessageTime in the contacts list
+      setContacts((prev) =>
+        prev.map((contact) =>
+          contact.id === activeContactId
+            ? {
+                ...contact,
+                lastMessage: messageText,
+                lastMessageTime: now,
+              }
+            : contact
+        )
+      )
+
+      // Refresh contacts to get updated last_message_time from server
+      // But preserve the optimistic update we just made
+      try {
+        const res = await fetch(`${API_BASE}/getContacts.php`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: AUTH_HEADER,
+        })
+        const contactData = await res.json().catch(() => ({}))
+        if (res.ok && contactData?.ok === true && Array.isArray(contactData.contacts)) {
+          setContacts((prev) => {
+            const mapped = normalizeContacts(contactData.contacts, prev)
+            // Ensure the contact we just sent to still has the correct lastMessageTime
+            return mapped.map(contact => {
+              if (contact.id === activeContactId) {
+                // If server returned a valid last_message_time, use it, otherwise keep our optimistic update
+                const serverTime = contact.lastMessageTime
+                const optimisticTime = prev.find(c => c.id === activeContactId)?.lastMessageTime
+                return {
+                  ...contact,
+                  lastMessage: contact.lastMessage || messageText,
+                  lastMessageTime: serverTime || optimisticTime || contact.lastMessageTime
+                }
+              }
+              return contact
+            })
+          })
+        }
+      } catch (refreshError) {
+        console.error('Failed to refresh contacts', refreshError)
+      }
     } catch (error) {
       console.error('Failed to upload media', error)
       // Remove failed message
@@ -457,8 +586,50 @@ export default function ChatSection() {
                         {contact.assignedAgent}
                       </div>
                     )}
-                    <div className="text-xs opacity-50 truncate">
-                      {contact.lastMessage || (contact.lastMessageTime ? formatFullTimestamp(contact.lastMessageTime) || 'No recent activity' : 'No recent activity')}
+                    <div className="text-xs opacity-50">
+                      {contact.lastMessage && (
+                        <div className="truncate">{contact.lastMessage}</div>
+                      )}
+                      {(() => {
+                        // Only show time if we have a valid lastMessageTime
+                        if (!contact.lastMessageTime) {
+                          // Default is empty - show nothing
+                          return null
+                        }
+                        // Try to format the timestamp
+                        const formatted = formatFullTimestamp(contact.lastMessageTime) || formatTime(contact.lastMessageTime)
+                        if (formatted) {
+                          return (
+                            <div className={`text-xs opacity-40 ${contact.lastMessage ? 'mt-0.5' : ''}`}>
+                              {formatted}
+                            </div>
+                          )
+                        }
+                        // If formatting fails, try to parse and display raw date
+                        try {
+                          const date = new Date(contact.lastMessageTime)
+                          if (!isNaN(date.getTime())) {
+                            const dateStr = date.toLocaleDateString('en-GB', { 
+                              day: '2-digit', 
+                              month: 'short', 
+                              year: 'numeric'
+                            })
+                            const timeStr = date.toLocaleTimeString('en-GB', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            })
+                            return (
+                              <div className={`text-xs opacity-40 ${contact.lastMessage ? 'mt-0.5' : ''}`}>
+                                {dateStr} {timeStr}
+                              </div>
+                            )
+                          }
+                        } catch (e) {
+                          // If all else fails, show nothing (default is empty)
+                        }
+                        return null
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -471,8 +642,16 @@ export default function ChatSection() {
       {/* Middle Chat Window */}
       <main className="flex-1 flex flex-col">
         {!activeContact ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-white/50">
-            Select a contact to view messages
+          <div className="flex flex-1 flex-col items-center justify-center gap-5 bg-[#0d1117] text-center px-6">
+            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white/10 border border-white/20">
+              <MessageCircle className="text-white/40" size={40} />
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <h3 className="text-lg font-semibold text-white">Select a contact</h3>
+              <p className="text-sm text-white/50 max-w-md">
+                Choose a contact from the list to view and send messages
+              </p>
+            </div>
           </div>
         ) : (
           <>
@@ -484,7 +663,7 @@ export default function ChatSection() {
               <div className="min-w-0 flex-1">
                 <div className="text-base font-medium">{activeContact.name}</div>
                 <div className="text-xs opacity-50">
-                  Last active {formatTime(activeContact.lastMessageTime) || 'Recently'}
+                  {lastMessageTime ? formatFullTimestamp(lastMessageTime) || formatTime(lastMessageTime) || 'No recent messages' : 'No recent messages'}
                 </div>
               </div>
               <div className="shrink-0 flex items-center gap-2">

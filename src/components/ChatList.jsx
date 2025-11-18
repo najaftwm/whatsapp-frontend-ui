@@ -8,65 +8,94 @@ const normalizeContacts = (value) => {
   return value.map((c) => {
     const name = c.name || c.phone_number || "Unknown";
     const lastMessage = c.lastMessage ?? c.last_message ?? "";
+    // Prioritize last_message_time over last_seen for accurate last message time
     const lastMessageTime =
-      c.lastMessageTime ??
       c.last_message_time ??
-      c.last_seen ??
+      c.lastMessageTime ??
       c.time ??
-      "";
+      null; // Don't use last_seen as it's not the message time
 
     return {
       ...c,
       id: c.id,
       name,
       lastMessage,
-      lastMessageTime,
+      lastMessageTime: lastMessageTime || null,
       avatar: c.avatar || name.slice(0, 2).toUpperCase(),
     };
   });
 };
 
-const formatTime = (raw) => {
-  if (!raw) return "";
-
-  const tryDate = (value) => {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
+const parseTimestamp = (raw) => {
+  if (!raw) return null;
+  
+  const toDate = (value) => {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
   };
 
   let date = null;
-
+  
   if (typeof raw === "number") {
-    const t = raw < 1e12 ? raw * 1000 : raw;
-    date = tryDate(t);
+    const ms = raw < 1e12 ? raw * 1000 : raw;
+    date = toDate(ms);
   } else if (typeof raw === "string") {
     const trimmed = raw.trim();
-    if (!trimmed) return "";
-    let isoLike = null;
+    if (!trimmed) return null;
+    
+    // Handle numeric strings (Unix timestamps)
     if (/^\d+$/.test(trimmed)) {
       const numeric = Number(trimmed);
-      const factor = trimmed.length === 10 ? 1000 : 1;
-      date = tryDate(numeric * factor);
+      date = toDate(trimmed.length === 10 ? numeric * 1000 : numeric);
     }
+    
+    // Handle datetime strings like "2024-01-15 15:42:00" or "2024-01-15T15:42:00"
     if (!date) {
-      isoLike = trimmed.replace(" ", "T");
-      const isoPattern =
-        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?$/;
-      if (isoPattern.test(isoLike)) {
-        date = tryDate(`${isoLike}Z`);
-        if (!date) {
-          date = tryDate(isoLike);
+      // Replace space with T for ISO-like format
+      let isoLike = trimmed.replace(" ", "T");
+      
+      // Check if it's a datetime string without timezone (e.g., "2024-01-15T15:42:00")
+      const datetimePattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.(\d+))?$/;
+      const match = isoLike.match(datetimePattern);
+      
+      if (match) {
+        // Parse as local time by creating Date object with individual components
+        // This ensures it's treated as local time, not UTC
+        const year = parseInt(match[1], 10);
+        const month = parseInt(match[2], 10) - 1; // Month is 0-indexed
+        const day = parseInt(match[3], 10);
+        const hour = parseInt(match[4], 10);
+        const minute = parseInt(match[5], 10);
+        const second = match[6] ? parseInt(match[6], 10) : 0;
+        const millisecond = match[7] ? parseInt(match[7].substring(0, 3), 10) : 0;
+        
+        date = new Date(year, month, day, hour, minute, second, millisecond);
+        if (Number.isNaN(date.getTime())) {
+          date = null;
         }
       }
-    }
-    if (!date) {
-      date = tryDate(trimmed);
-      if (!date && isoLike) {
-        date = tryDate(`${isoLike}Z`);
+      
+      // If still no date, try standard parsing
+      if (!date) {
+        // Try as-is first (might be ISO with timezone)
+        date = toDate(trimmed);
+        if (!date) {
+          // Try with T replacement
+          date = toDate(isoLike);
+          if (!date) {
+            // Try with Z suffix (UTC)
+            date = toDate(`${isoLike}Z`);
+          }
+        }
       }
     }
   }
 
+  return date;
+};
+
+const formatTime = (raw) => {
+  const date = parseTimestamp(raw);
   if (!date) return "";
 
   try {
@@ -76,6 +105,24 @@ const formatTime = (raw) => {
       hour12: true,
     }).format(date);
   } catch {
+    return "";
+  }
+};
+
+const formatDateOnly = (raw) => {
+  const date = parseTimestamp(raw);
+  if (!date) return "";
+
+  try {
+    // Only return the date, no time
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: undefined, // Use local timezone
+    });
+  } catch (e) {
+    console.error("Error formatting date:", e, raw);
     return "";
   }
 };
@@ -136,9 +183,61 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
           throw new Error(data?.error || "Failed to load contacts");
         }
         if (aborted) return;
-        const mapped = normalizeContacts(data.contacts);
+        let mapped = normalizeContacts(data.contacts);
+        
+        // Fetch the last message timestamp for ALL contacts to ensure accuracy
+        // This ensures we always have the most recent timestamp from actual messages
+        if (mapped.length > 0 && !aborted) {
+          const timePromises = mapped.map(async (contact) => {
+            try {
+              const msgResp = await fetch(
+                `${API_BASE_URL}/getMessages.php?contact_id=${encodeURIComponent(contact.id)}`,
+                {
+                  credentials: "include",
+                  headers: AUTH_HEADERS,
+                }
+              );
+              const msgData = await msgResp.json().catch(() => ({}));
+              if (msgData?.ok && msgData?.messages && Array.isArray(msgData.messages) && msgData.messages.length > 0) {
+                // Get the most recent message timestamp
+                const sortedMessages = [...msgData.messages].sort((a, b) => {
+                  const timeA = new Date(a.timestamp || a.time || 0).getTime();
+                  const timeB = new Date(b.timestamp || b.time || 0).getTime();
+                  return timeB - timeA;
+                });
+                const latestTimestamp = sortedMessages[0]?.timestamp || sortedMessages[0]?.time || null;
+                if (latestTimestamp) {
+                  console.log(`Fetched timestamp for contact ${contact.id}:`, latestTimestamp);
+                  return {
+                    id: contact.id,
+                    lastMessageTime: latestTimestamp,
+                  };
+                }
+              }
+            } catch (e) {
+              console.error(`Failed to fetch last message for contact ${contact.id}:`, e);
+            }
+            return null;
+          });
+          
+          const timeResults = await Promise.all(timePromises);
+          // Update contacts with fetched timestamps (only if we got a valid timestamp)
+          mapped = mapped.map(contact => {
+            const timeResult = timeResults.find(r => r && r.id === contact.id);
+            if (timeResult && timeResult.lastMessageTime) {
+              // Always use the fetched timestamp from actual messages for accuracy
+              console.log(`Updating contact ${contact.id} (${contact.name}) with timestamp:`, timeResult.lastMessageTime);
+              return { ...contact, lastMessageTime: timeResult.lastMessageTime };
+            }
+            // If we couldn't fetch a timestamp, keep the existing one
+            return contact;
+          });
+        }
+        
         console.log('ChatList - Normalized contacts:', mapped.length, 'contacts');
-        setContacts(mapped);
+        if (!aborted) {
+          setContacts(mapped);
+        }
       } catch (e) {
         console.error('ChatList - Error fetching contacts:', e);
         if (!aborted) setError(e?.message || "Failed to load contacts");
@@ -302,13 +401,51 @@ export default function ChatList({ chats, activeId, onSelect, onLogout }) {
                       <h3 className="text-[15px] font-medium text-white truncate">
                         {c.name || "Unknown"}
                       </h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                        {formatTime(c.lastMessageTime)}
-                      </span>
+                      {(() => {
+                        // Only show date if we have lastMessageTime
+                        if (!c.lastMessageTime) {
+                          return null;
+                        }
+                        
+                        // Parse the timestamp first
+                        const parsedDate = parseTimestamp(c.lastMessageTime);
+                        if (!parsedDate) {
+                          return null;
+                        }
+                        
+                        // Try formatDateOnly first
+                        let formatted = formatDateOnly(c.lastMessageTime);
+                        
+                        // If that fails, use the parsed date directly
+                        if (!formatted && parsedDate) {
+                          try {
+                            formatted = parsedDate.toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            });
+                          } catch (e) {
+                            console.error("Error formatting parsed date:", e, c.lastMessageTime);
+                          }
+                        }
+                        
+                        // Only show if we have a valid formatted date
+                        if (formatted) {
+                          return (
+                            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap ml-2">
+                              {formatted}
+                            </span>
+                          );
+                        }
+                        
+                        return null;
+                      })()}
                     </div>
-                    <p className="text-sm text-gray-400 truncate leading-5">
-                      {c.lastMessage}
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-gray-400 truncate leading-5 flex-1">
+                        {c.lastMessage}
+                      </p>
+                    </div>
                   </div>
                 </div>
               );

@@ -451,57 +451,57 @@ export default function ChatWindow({
     return source.slice(0, 2).toUpperCase();
   }, [contact, contactName]);
 
-  const contactStatus = useMemo(() => {
-    const raw =
-      contact?.lastMessageTime ||
-      contact?.last_message_time ||
-      contact?.last_seen ||
-      "";
+  // Format full timestamp (date + time) like admin panel
+  const formatFullTimestamp = useCallback((raw) => {
     const date = parseDate(raw);
-    if (!date) {
-      return contact?.last_seen || contact?.phone_number || "Online";
+    if (!date) return "";
+
+    try {
+      const dateStr = date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      const timeStr = date.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+      return `${dateStr} ${timeStr}`;
+    } catch {
+      return "";
     }
+  }, [parseDate]);
 
-    const now = new Date();
-    const sameDay = now.toDateString() === date.toDateString();
-    const timeLabel = formatTime(raw);
-    const dateFormatter = new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-      year: now.getFullYear() !== date.getFullYear() ? "numeric" : undefined,
-    });
-
-    if (sameDay) {
-      return `Last message at ${timeLabel}`;
+  // Get last message time from messages or contact
+  const lastMessageTime = useMemo(() => {
+    if (chatMessages.length > 0) {
+      // Get the most recent message timestamp
+      const sortedMessages = [...chatMessages].sort((a, b) => {
+        const timeA = new Date(a.timestamp || 0).getTime();
+        const timeB = new Date(b.timestamp || 0).getTime();
+        return timeB - timeA;
+      });
+      return sortedMessages[0]?.timestamp || contact?.lastMessageTime || contact?.last_message_time || "";
     }
+    return contact?.lastMessageTime || contact?.last_message_time || "";
+  }, [chatMessages, contact]);
 
-    return `Last message ${dateFormatter.format(date)} ${timeLabel}`;
-  }, [contact, formatTime, parseDate]);
+  // Get phone number
+  const phoneNumber = useMemo(() => {
+    return contact?.phone_number || contact?.phone || "";
+  }, [contact]);
 
   const showBackButton = typeof onBack === "function";
 
-  if (!activeChat || !contact) {
+  // Show loading state if contact data is not available yet
+  if (!contact) {
     return (
-      <div className="flex flex-col justify-center items-center h-full bg-[#0b141a] text-center p-5 border-b-[6px] border-[#00a884]">
-        <div className="w-[550px] max-w-full mb-5">
-          <img
-            src="https://raw.githubusercontent.com/jazimabbas/whatsapp-web-ui/master/public/assets/images/entry-image-dark.png"
-            alt="WhatsApp Web"
-            className="w-full h-full rounded-full"
-          />
+      <div className="flex flex-col justify-center items-center h-full bg-[#0b141a] text-center p-5">
+        <div className="animate-spin inline-block size-8 border-[3px] border-current border-t-transparent text-[#00a884] rounded-full mb-4" role="status" aria-label="loading">
+          <span className="sr-only">Loading...</span>
         </div>
-        <h1 className="text-[#0b141a] text-[2rem] font-normal mb-[10px] bg-white px-4 py-1 rounded-full">
-          WhatsApp Web
-        </h1>
-        <p className="text-[#8696a0] text-[0.9rem] font-medium max-w-[500px] leading-6 flex flex-col items-center pb-[30px]">
-          <span>Send and receive messages without keeping your phone online.</span>
-          <span>Use WhatsApp on up to 4 linked devices and 1 phone at the same time.</span>
-        </p>
-        <p className="text-[#8696a0] text-[0.9rem] font-medium max-w-[500px] leading-6 flex items-center pt-[10px]">
-          <span>Built by</span>
-          <span className="px-2">Ashutosh Mishra</span>
-          <span className="text-red-500 ml-[2px]">❤</span>
-        </p>
+        <p className="text-[#8696a0] text-sm">Loading contact...</p>
       </div>
     );
   }
@@ -551,9 +551,16 @@ export default function ChatWindow({
             <h2 className="font-normal text-white text-[16px] leading-[21px] truncate">
               {contactName}
             </h2>
-            <p className="text-xs text-[#8696a0] truncate">
-              {contactStatus || "Online"}
-            </p>
+            {phoneNumber && (
+              <p className="text-xs text-[#8696a0] truncate">
+                {phoneNumber}
+              </p>
+            )}
+            {lastMessageTime && (
+              <p className="text-xs text-[#8696a0] truncate">
+                {formatFullTimestamp(lastMessageTime) || formatTime(lastMessageTime) || ""}
+              </p>
+            )}
           </div>
         </div>
 
