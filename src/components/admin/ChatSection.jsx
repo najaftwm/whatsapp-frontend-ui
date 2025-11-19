@@ -3,6 +3,7 @@ import { Search, FileText, Paperclip, X, MessageCircle } from 'lucide-react'
 import { API_BASE_URL, AUTH_HEADERS } from '../../config/api'
 import TemplatePopup from './TemplatePopup'
 import MessageWithMedia from './MessageWithMedia'
+import { pusher } from '../../pusherClient'
 
 const API_BASE = API_BASE_URL
 const AUTH_HEADER = AUTH_HEADERS
@@ -231,6 +232,86 @@ export default function ChatSection() {
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Real-time updates with Pusher
+  useEffect(() => {
+    if (!activeContactId) return
+
+    const channel = pusher.subscribe('chat-channel')
+    channel.bind('new-message', (data) => {
+      if (data.contact_id === activeContactId || String(data.contact_id) === String(activeContactId)) {
+        // Generate unique ID if not provided
+        const uniqueId = data.id || `pusher-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        const text = data.message || data.message_text || ''
+        const now = data.timestamp || new Date().toISOString()
+        
+        setMessages((prev) => {
+          // If this is a company (outgoing) message, replace the last optimistic temp one
+          if ((data.sender_type || 'customer') === 'company') {
+            const lastIdx = [...prev].reverse().findIndex((m) => {
+              if (m.senderType !== 'company') return false
+              const id = typeof m.id === 'string' ? m.id : ''
+              return id.startsWith('temp-') && (m.message === text)
+            })
+            if (lastIdx !== -1) {
+              const idx = prev.length - 1 - lastIdx
+              const next = [...prev]
+              next[idx] = {
+                id: uniqueId,
+                message: text,
+                senderType: 'company',
+                timestamp: now,
+                mediaType: data.media_type || next[idx].mediaType || null,
+                mediaFilePath: data.media_file_path || next[idx].mediaFilePath || null,
+                mediaFileName: data.media_file_name || next[idx].mediaFileName || null,
+              }
+              return next
+            }
+          }
+
+          // Otherwise, prevent exact duplicates
+          const exists = prev.some(
+            (msg) =>
+              msg.id === uniqueId ||
+              (msg.timestamp === data.timestamp &&
+                msg.message === text &&
+                msg.senderType === (data.sender_type || 'customer'))
+          )
+          if (exists) return prev
+
+          return [
+            ...prev,
+            {
+              id: uniqueId,
+              message: text,
+              senderType: data.sender_type || 'customer',
+              timestamp: now,
+              mediaType: data.media_type || null,
+              mediaFilePath: data.media_file_path || null,
+              mediaFileName: data.media_file_name || null,
+            },
+          ]
+        })
+
+        // Update the contact's lastMessage and lastMessageTime in the contacts list
+        setContacts((prev) =>
+          prev.map((contact) =>
+            contact.id === activeContactId
+              ? {
+                  ...contact,
+                  lastMessage: text,
+                  lastMessageTime: now,
+                }
+              : contact
+          )
+        )
+      }
+    })
+
+    return () => {
+      pusher.unsubscribe('chat-channel')
+    }
+  }, [activeContactId])
 
   const filteredContacts = useMemo(() => {
     if (!query.trim()) return contacts
